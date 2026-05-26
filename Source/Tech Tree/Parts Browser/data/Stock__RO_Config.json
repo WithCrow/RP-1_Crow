@@ -5560,7 +5560,9 @@
         "upgrade": false,
         "entry_cost_mods": "",
         "identical_part_name": "",
-        "module_tags": []
+        "module_tags": [
+            "Reentry"
+        ]
     },
     {
         "name": "mk2CargoBayS",
@@ -5583,7 +5585,9 @@
         "upgrade": false,
         "entry_cost_mods": "",
         "identical_part_name": "",
-        "module_tags": []
+        "module_tags": [
+            "Reentry"
+        ]
     },
     {
         "name": "mk2Cockpit_Inline",
@@ -5737,7 +5741,9 @@
         "upgrade": false,
         "entry_cost_mods": "",
         "identical_part_name": "",
-        "module_tags": []
+        "module_tags": [
+            "Reentry"
+        ]
     },
     {
         "name": "mk2FuselageLongLFO",
@@ -5759,7 +5765,9 @@
         "upgrade": false,
         "entry_cost_mods": "",
         "identical_part_name": "",
-        "module_tags": []
+        "module_tags": [
+            "Reentry"
+        ]
     },
     {
         "name": "mk2FuselageShortLFO",
@@ -5781,7 +5789,9 @@
         "upgrade": false,
         "entry_cost_mods": "",
         "identical_part_name": "",
-        "module_tags": []
+        "module_tags": [
+            "Reentry"
+        ]
     },
     {
         "name": "mk2FuselageShortLiquid",
@@ -5803,7 +5813,9 @@
         "upgrade": false,
         "entry_cost_mods": "",
         "identical_part_name": "",
-        "module_tags": []
+        "module_tags": [
+            "Reentry"
+        ]
     },
     {
         "name": "mk2FuselageShortMono",
@@ -5825,7 +5837,9 @@
         "upgrade": false,
         "entry_cost_mods": "",
         "identical_part_name": "",
-        "module_tags": []
+        "module_tags": [
+            "Reentry"
+        ]
     },
     {
         "name": "mk2LanderCabin",
@@ -5966,7 +5980,9 @@
         "upgrade": false,
         "entry_cost_mods": "STS",
         "identical_part_name": "",
-        "module_tags": []
+        "module_tags": [
+            "Reentry"
+        ]
     },
     {
         "name": "mk3CargoBayM",
@@ -5989,7 +6005,9 @@
         "upgrade": false,
         "entry_cost_mods": "STS",
         "identical_part_name": "",
-        "module_tags": []
+        "module_tags": [
+            "Reentry"
+        ]
     },
     {
         "name": "mk3CargoBayS",
@@ -6012,7 +6030,9 @@
         "upgrade": false,
         "entry_cost_mods": "STS",
         "identical_part_name": "",
-        "module_tags": []
+        "module_tags": [
+            "Reentry"
+        ]
     },
     {
         "name": "mk3CargoRamp",
@@ -6035,7 +6055,9 @@
         "upgrade": false,
         "entry_cost_mods": "STS",
         "identical_part_name": "",
-        "module_tags": []
+        "module_tags": [
+            "Reentry"
+        ]
     },
     {
         "name": "mk3Cockpit_Shuttle",
@@ -6088,7 +6110,8 @@
         "identical_part_name": "",
         "module_tags": [
             "HumanRated",
-            "NoResourceCostMult"
+            "NoResourceCostMult",
+            "Reentry"
         ]
     },
     {
@@ -6111,7 +6134,9 @@
         "upgrade": false,
         "entry_cost_mods": "",
         "identical_part_name": "",
-        "module_tags": []
+        "module_tags": [
+            "Reentry"
+        ]
     },
     {
         "name": "mk3FuselageLFO_25",
@@ -6133,7 +6158,9 @@
         "upgrade": false,
         "entry_cost_mods": "",
         "identical_part_name": "",
-        "module_tags": []
+        "module_tags": [
+            "Reentry"
+        ]
     },
     {
         "name": "mk3FuselageLFO_50",
@@ -6155,7 +6182,9 @@
         "upgrade": false,
         "entry_cost_mods": "",
         "identical_part_name": "",
-        "module_tags": []
+        "module_tags": [
+            "Reentry"
+        ]
     },
     {
         "name": "mk3FuselageLF_100",
@@ -6177,7 +6206,9 @@
         "upgrade": false,
         "entry_cost_mods": "",
         "identical_part_name": "",
-        "module_tags": []
+        "module_tags": [
+            "Reentry"
+        ]
     },
     {
         "name": "mk3FuselageLF_25",
@@ -6199,7 +6230,9 @@
         "upgrade": false,
         "entry_cost_mods": "",
         "identical_part_name": "",
-        "module_tags": []
+        "module_tags": [
+            "Reentry"
+        ]
     },
     {
         "name": "mk3FuselageLF_50",
@@ -6221,7 +6254,9 @@
         "upgrade": false,
         "entry_cost_mods": "",
         "identical_part_name": "",
-        "module_tags": []
+        "module_tags": [
+            "Reentry"
+        ]
     },
     {
         "name": "mk3FuselageMONO",
@@ -6243,7 +6278,9 @@
         "upgrade": false,
         "entry_cost_mods": "",
         "identical_part_name": "",
-        "module_tags": []
+        "module_tags": [
+            "Reentry"
+        ]
     },
     {
         "name": "nacelleBody",
@@ -8922,7 +8959,9 @@
         "upgrade": false,
         "entry_cost_mods": "",
         "identical_part_name": "",
-        "module_tags": []
+        "module_tags": [
+            "Reentry"
+        ]
     },
     {
         "name": "wingShuttleElevon1",
@@ -8944,7 +8983,9 @@
         "upgrade": false,
         "entry_cost_mods": "",
         "identical_part_name": "",
-        "module_tags": []
+        "module_tags": [
+            "Reentry"
+        ]
     },
     {
         "name": "wingShuttleElevon2",
@@ -8966,7 +9007,9 @@
         "upgrade": false,
         "entry_cost_mods": "",
         "identical_part_name": "",
-        "module_tags": []
+        "module_tags": [
+            "Reentry"
+        ]
     },
     {
         "name": "wingShuttleRudder",
@@ -8988,7 +9031,9 @@
         "upgrade": false,
         "entry_cost_mods": "",
         "identical_part_name": "",
-        "module_tags": []
+        "module_tags": [
+            "Reentry"
+        ]
     },
     {
         "name": "wingShuttleStrake",
@@ -9010,7 +9055,9 @@
         "upgrade": false,
         "entry_cost_mods": "",
         "identical_part_name": "",
-        "module_tags": []
+        "module_tags": [
+            "Reentry"
+        ]
     },
     {
         "name": "wingStrake",
