@@ -36,9 +36,8 @@
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup>
-    <KSPRoot Condition=" '$(KSPRoot)' == '' ">
-      $(ReferencePath.TrimEnd([System.IO.Path]::DirectorySeparatorChar))</KSPRoot>
-  </PropertyGroup>
+    <KSPRoot>C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program</KSPRoot>
+    </PropertyGroup>
   <ItemGroup>
     <Compile Include="ScenarioModules\RnDUpgradeTips.cs" />
     <Compile Include="Avionics\ControlLockerUtils.cs" />
