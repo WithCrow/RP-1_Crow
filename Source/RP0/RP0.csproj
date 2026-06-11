@@ -39,7 +39,6 @@
     <KSPRoot>C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program</KSPRoot>
     </PropertyGroup>
   <ItemGroup>
-    <Compile Include="RecoveryTechLevel.cs" />
     <Compile Include="ScenarioModules\RnDUpgradeTips.cs" />
     <Compile Include="Avionics\ControlLockerUtils.cs" />
     <Compile Include="Avionics\EditorBinder.cs" />
@@ -61,7 +60,6 @@
     <Compile Include="Singletons\LeaderNotifications.cs" />
     <Compile Include="SpaceCenter\Projects\HireStaffProject.cs" />
     <Compile Include="SpaceCenter\Projects\VesselRepairProject.cs" />
-    <Compile Include="SpaceCenter\RecoveryTechLevel.cs" />
     <Compile Include="UI\CostBreakdownGUI.cs" />
     <Compile Include="UI\ProceduralAvionicsWindow.cs" />
     <Compile Include="CareerLog\CareerEvent.cs" />
