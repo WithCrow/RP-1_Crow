@@ -1695,14 +1695,20 @@ namespace RP0
             }
             else
             {
-                // Process reconditioning and refurbishment even for LCs that have no engineers or are inactive
+                // Process non-blocking ops
                 for (int i = currentLC.Recon_Rollout.Count; i-- > 0;)
                 {
                     var rr = currentLC.Recon_Rollout[i];
-                    if (rr.RRType == ReconRolloutProject.RolloutReconType.Reconditioning ||
-                        rr.RRType == ReconRolloutProject.RolloutReconType.Refurbishment)
+                    if (!rr.IsBlocking)
                     {
                         rr.IncrementProgress(UTDiff);
+                        if (rr.RRType == ReconRolloutProject.RolloutReconType.Recovery && 
+                            rr.IsComplete() && 
+                            KCTUtilities.FindVPByID(rr.LC, rr.AssociatedIdAsGuid) is VesselProject vpRec)
+                        {
+                            currentLC.Recon_Rollout.Add(rr.CreateFollowOnRefurbishment(vpRec));
+                            RP0Debug.Log($"Initiated follow-on refurbishment for {vpRec.shipName}");
+                        }
                     }
                 }
             }
@@ -1845,7 +1851,7 @@ namespace RP0
 
             bool isSPHAllowed = KCTUtilities.IsSphRecoveryAvailable(v);
             bool isVABAllowed = KCTUtilities.IsVabRecoveryAvailable(v);
-            string reuseTooltip = GenerateReuseTooltip(v, isSPHAllowed);
+            string reuseTooltip = GenerateReuseTooltip(v, v.GetVesselBuiltAt() == EditorFacility.SPH);
             string techLimitText = GetVabTechLimitText();
 
             options.Add(new DialogGUIButtonWithTooltip("Recover to SPH", RecoverToSPH)
@@ -1876,27 +1882,30 @@ namespace RP0
             return options;
         }
 
-        private string GenerateReuseTooltip(Vessel v, bool isSPHAllowed)
+        private string GenerateReuseTooltip(Vessel v, bool isSPH)
         {
-            ProjectType projType = isSPHAllowed ? ProjectType.SPH : ProjectType.VAB;
+            ProjectType projType = isSPH ? ProjectType.SPH : ProjectType.VAB;
             VesselProject dummyVessel = new VesselProject(v, projType);
 
-            double maxDist = FlightGlobals.GetHomeBody().Radius * Math.PI;
-            double distanceFraction = Math.Min(1d, dummyVessel.kscDistance / maxDist);
+            LaunchComplex activeLC = dummyVessel.LC ?? ActiveSC.ActiveLC;
+            dummyVessel.LC = activeLC;
 
-            double recBP = projType == ProjectType.SPH ? Formula.GetRecoveryBPSPH(dummyVessel) : Formula.GetRecoveryBPVAB(dummyVessel);
-            double recCost = Formula.GetRecoveryCost(dummyVessel, distanceFraction);
-            double refBP = Formula.GetRefurbishmentBP(dummyVessel);
-            double refCost = Formula.GetRefurbishmentCost(dummyVessel);
+            ReconRolloutProject tmpRecover = new ReconRolloutProject(dummyVessel, ReconRolloutProject.RolloutReconType.Recovery, dummyVessel.shipID.ToString());
+            ReconRolloutProject tmpRefurb = new ReconRolloutProject(dummyVessel, ReconRolloutProject.RolloutReconType.Refurbishment, dummyVessel.shipID.ToString());
 
-            LaunchComplex activeLC = dummyVessel.LC ?? SpaceCenterManagement.Instance.ActiveSC.ActiveLC;
-            double refurbRate = Formula.GetReconditioningBuildRate(activeLC, false);
-            if (refurbRate <= 0) refurbRate = 1d; // Failsafe
+            double recoverRate = tmpRecover.GetBuildRate(activeLC.MaxEngineers); // calculate with maximum possible engineers for the craft.
+            double refurbRate = tmpRefurb.GetBuildRate(activeLC.MaxEngineers);
 
-            double recDays = Math.Ceiling(recBP / 86400d);
-            double refDays = Math.Ceiling((refBP / refurbRate) / 86400d);
+            int maxEngs = activeLC.MaxEngineersFor(dummyVessel);
+            
+            double recTime = tmpRecover.BP / recoverRate;
+            double refTime = tmpRefurb.BP / refurbRate;
+            
+            RP0Debug.Log($"Mass: {dummyVessel.mass}. Distance: {dummyVessel.kscDistance}");
 
-            return $"Recovery time: {recDays} days for {recCost:N0} funds\nRefurbishment time: {refDays} days for {refCost:N0} funds\nTotal cost: {recCost + refCost:N0} funds";
+            return $"Recovery time: {RP0DTUtils.GetColonFormattedTime(recTime)} for {tmpRecover.cost:N0} funds\n" + 
+                $"Refurbishment time: {RP0DTUtils.GetColonFormattedTime(refTime)} with {maxEngs} engineers for {tmpRefurb.cost:N0} additional funds\n" + 
+                $"Total cost: {tmpRecover.cost + tmpRefurb.cost:N0} funds (engineer salary not included)";
         }
 
         private string GetVabTechLimitText()

@@ -629,12 +629,46 @@ namespace RP0
             RP0Debug.Log($"Matching BP: {editProgressBP}");
 
             double newTotalBP = SpaceCenterManagement.Instance.EditorVessel.buildPoints;
+            double newCost = SpaceCenterManagement.Instance.EditorVessel.effectiveCost;
 
-            newProgressBP = Math.Min(newTotalBP, oldProgressBP) - (origTotalBP - editProgressBP) * Database.SettingsSC.PartRemovalTimePenalty; // contribution from old craft
-            RP0Debug.Log($"BP after Removal Penalty: {newProgressBP}");
-            similarityProgressBP = newProgressBP;
-            newProgressBP = Math.Max(0, newProgressBP - (newTotalBP - editProgressBP) * Database.SettingsSC.PartAdditionTimePenalty);
-            RP0Debug.Log($"BP after Additive Penalty: {newProgressBP}");
+            // Get the cost of the added parts
+            double costDelta = newCost - origCost;
+
+            if (costDelta > 0)
+            {
+                // Calculate the BP required for the added parts
+                double standaloneAddedBP = Formula.GetVesselBuildPoints(costDelta);
+
+                // New progress is the difference between the total and the added
+                newProgressBP = Math.Max(0, newTotalBP - standaloneAddedBP);
+
+                // Safety clamp
+                newProgressBP = Math.Min(newProgressBP, oldProgressBP + (newTotalBP - origTotalBP));
+            }
+            else if (costDelta < 0)
+            {
+                // No parts added, use the minimum progress (to avoid >100%)
+                newProgressBP = Math.Min(oldProgressBP, newTotalBP);
+            }
+            else
+            {
+                // There is still one exploit where the player exchanges a part of equal EC and mass, but honestly? Does such a part even exist?
+                double newMass = SpaceCenterManagement.Instance.EditorVessel.GetTotalMass();
+                double oldMass = ship.mass;
+
+                if (Math.Abs(newMass - oldMass) > 0.001)
+                {
+                    // Small penalty if parts were exchanged - unhappy with this
+                    double refitPenalty = newTotalBP * 0.05;
+                    newProgressBP = Math.Max(0, oldProgressBP - refitPenalty);
+                }
+                else
+                {
+                    // No parts added, use the minimum progress (to avoid >100%)
+                    newProgressBP = Math.Min(oldProgressBP, newTotalBP);
+                }
+            }
+
             originalCompletionPercent = oldProgressBP / origTotalBP;
             newCompletionPercent = newProgressBP / newTotalBP;
             Profiler.EndSample();
