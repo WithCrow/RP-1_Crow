@@ -459,47 +459,8 @@ namespace RP0
                     }
                 }
             }
-
-            if (SpaceCenterManagement.Instance.nonmatchingParts.Count() > 0
-                && GUILayout.Button(_gcNonmatchingParts, _highlightNonmatchingParts ? _greenButton : GUI.skin.button))
-            {
-                _highlightNonmatchingParts = !_highlightNonmatchingParts;
-            }
-            foreach (var kvp in _highlights)
-            {
-                kvp.Key.SetHighlightDefault();
-            }
-            _highlights.Clear();
-            if (_highlightNonmatchingParts)
-            {
-                foreach (var kvp in SpaceCenterManagement.Instance.nonmatchingParts)
-                {
-                    Part p = kvp.Key;
-                    KCTUtilities.PartCompareResult result = kvp.Value;
-                    p.SetHighlightType(Part.HighlightType.AlwaysOn);
-                    switch (result)
-                    {
-                        case KCTUtilities.PartCompareResult.NAME_DIFF:
-                            p.SetHighlightColor(Color.magenta);
-                            break;
-                        case KCTUtilities.PartCompareResult.COST_DIFF:
-                            p.SetHighlightColor(Color.red);
-                            break;
-                        case KCTUtilities.PartCompareResult.MASS_DIFF:
-                            p.SetHighlightColor(Color.yellow);
-                            break;
-                        case KCTUtilities.PartCompareResult.RESOURCES_DIFF:
-                            p.SetHighlightColor(Color.blue);
-                            break;
-                        case KCTUtilities.PartCompareResult.NOT_PRESENT:
-                            p.SetHighlightColor(Color.green);
-                            break;
-                    }
-                    _highlights[p] = result;
-                }
-            }
-
-            //RenderMergeSection(ship);
+            
+            RenderMergeSection(editedVessel);
         }
 
         private static void RenderBuildRateInputRow(double buildPoints, double rateWithCurEngis)
