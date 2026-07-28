@@ -582,8 +582,6 @@ namespace RP0
             origTotalBP = ship.buildPoints;
             oldProgressBP = ship.IsFinished ? origTotalBP : ship.progress;
             foreach (ConfigNode part in ship.ExtractedPartNodes)
-
-            if (SpaceCenterManagement.Instance.MergedVessels.Count == 0)
             {
                 string name = GetPartNameFromNode(part);
                     if (!parts.TryGetValue(name, out HashSet<ConfigNode> nodes))
