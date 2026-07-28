@@ -183,3 +183,5 @@ Source/Unity/NewspaperUI/PartTools.cfg
 GameData/RP-1/Plugins/PluginData/RP1UpgradeWarningPLC
 GameData/RP-1/Plugins/PluginData/RP1MentionLoadingImages
 Source/Tech Tree/Tree Years.xlsx
+Source/RP0/RP0.csproj
+Source/CC_RP0/CC_RP0.csproj
