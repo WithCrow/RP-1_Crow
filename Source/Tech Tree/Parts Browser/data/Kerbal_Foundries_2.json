@@ -393,7 +393,7 @@
         "description": "Optimised for Kerbin straight out of its wooden crate - though tweakable for higher gravity - this wheel is designed for large, high-mobility planetary rovers. Criticised for being power-hungry, but never for being over powered! (Warning: Extremely over powered. Warranty void when used under the influence of gravity.)",
         "mod": "Kerbal Foundries 2",
         "cost": 250,
-        "entry_cost": 10000,
+        "entry_cost": 1000,
         "category": "EDL",
         "info": "Wheel",
         "year": "2004",
