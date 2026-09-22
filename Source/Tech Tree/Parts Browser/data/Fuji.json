@@ -82,7 +82,7 @@
         "year": "1975",
         "technology": "advancedUncrewedLanding",
         "ro": true,
-        "orphan": true,
+        "orphan": false,
         "rp0_conf": true,
         "spacecraft": "",
         "engine_config": "",
