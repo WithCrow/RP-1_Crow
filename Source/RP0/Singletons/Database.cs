@@ -41,27 +41,29 @@ namespace RP0
     /// </summary>
     public class RecoveryTechSettings
     {
-        public double RefurbishmentRateBase { get; set; } = 1.0d;
-        public double RecoveryRateBase { get; set; } = 1.0d;
-        public double RecoveryCostBase { get; set; } = 1.0d;
+        public double RefurbishmentRateBase { get; private set; } = 1.0d;
+        public double RefurbishmentCostBase { get; private set; } = 1.0d;
+        public double SplashdownPenaltyMultBase { get; private set; } = 1.0d;
+        public double RecoveryRateBase { get; private set; } = 1.0d;
+        public double RecoveryCostBase { get; private set; } = 1.0d;
 
         public struct RefurbTechEntry
         {
-            public string techID { get; set; }
-            public double rateRefurbishment { get; set; }
-            public double costRefurbishment { get; set; }
-            public double splashdownPenaltyMult { get; set; }
+            public string techID;
+            public double rateRefurbishment;
+            public double costRefurbishment;
+            public double splashdownPenaltyMult;
         }
 
         public struct RecoveryTechEntry
         {
-            public string techID { get; set; }
-            public double rateRecovery { get; set; }
-            public double costRecovery { get; set; }
+            public string techID;
+            public double rateRecovery;
+            public double costRecovery;
         }
 
-        public List<RefurbTechEntry> RefurbEntries { get; } = new List<RefurbTechEntry>();
-        public List<RecoveryTechEntry> RecoveryEntries { get; } = new List<RecoveryTechEntry>();
+        public readonly List<RefurbTechEntry> RefurbEntries = new List<RefurbTechEntry>();
+        public readonly List<RecoveryTechEntry> RecoveryEntries = new List<RecoveryTechEntry>();
 
         public double RecoveryRateMult { get; private set; } = 1.0d;
         public double RecoveryCostMult { get; private set; } = 1.0d;
@@ -80,6 +82,10 @@ namespace RP0
                 double tempBase = RefurbishmentRateBase;
                 if (b.TryGetValue("RateRefurbishment", ref tempBase))
                     RefurbishmentRateBase = tempBase;
+                if (b.TryGetValue("CostRefurbishment", ref tempBase))
+                    RefurbishmentCostBase = tempBase;
+                if (b.TryGetValue("SplashdownPenaltyMult", ref tempBase))
+                    SplashdownPenaltyMultBase = tempBase;
             }
 
             foreach (ConfigNode tech in refurbNode.GetNodes("TECH"))
@@ -146,14 +152,25 @@ namespace RP0
             if (HighLogic.CurrentGame == null) return;
             if (HighLogic.CurrentGame.Mode != Game.Modes.SANDBOX && ResearchAndDevelopment.Instance == null) return;
 
+            RecalculateAndApply(techID => ResearchAndDevelopment.GetTechnologyState(techID) == RDTech.State.Available);
+        }
+
+        /// <summary>
+        /// Recomputes the recovery/refurbishment multipliers from the loaded entries, deciding
+        /// which techs count as researched via the supplied predicate. The parameterless
+        /// overload uses the live ResearchAndDevelopment state; this one takes the predicate so
+        /// the stacking can be exercised in tests without a running game.
+        /// </summary>
+        public void RecalculateAndApply(Func<string, bool> isResearched)
+        {
             // Refurbishment
             double refurbRate = RefurbishmentRateBase;
-            double refurbCost = 1.0d;
-            double splashdown = 1.0d;
+            double refurbCost = RefurbishmentCostBase;
+            double splashdown = SplashdownPenaltyMultBase;
 
             foreach (var e in RefurbEntries)
             {
-                if (ResearchAndDevelopment.GetTechnologyState(e.techID) == RDTech.State.Available)
+                if (isResearched(e.techID))
                 {
                     refurbRate *= e.rateRefurbishment;
                     refurbCost *= e.costRefurbishment;
@@ -171,7 +188,7 @@ namespace RP0
 
             foreach (var e in RecoveryEntries)
             {
-                if (ResearchAndDevelopment.GetTechnologyState(e.techID) == RDTech.State.Available)
+                if (isResearched(e.techID))
                 {
                     recRate *= e.rateRecovery;
                     recCost *= e.costRecovery;

@@ -471,7 +471,6 @@ namespace RP0
             foreach (VesselProject v in SpaceCenterManagement.Instance.MergedVessels)
             {
                 usedShipsCost += v.GetTotalCost();
-                v.RemoveFromBuildList(out _);
             }
 
             var validator = new VesselBuildValidator();
@@ -488,6 +487,12 @@ namespace RP0
             if (KSPUtils.CurrentGameIsCareer() && (costDelta = oldCost - newShip.cost) != 0d)
             {
                 Funding.Instance.AddFunds((float)costDelta, TransactionReasonsRP0.VesselPurchase.Stock());
+            }
+
+            // remove merged vessels after validation
+            foreach (VesselProject v in SpaceCenterManagement.Instance.MergedVessels)
+            {
+                v.RemoveFromBuildList(out _);
             }
 
             AddVesselToBuildList(newShip, false);
@@ -608,6 +613,8 @@ namespace RP0
                 }
                 origTotalBP = Formula.GetVesselBuildPoints(totalEffectiveCost);
                 // Intentionally penalise merging by not scaling up progress BP to correspond to the higher total EC.
+                // Do cap it, though.
+                oldProgressBP = Math.Max(origTotalBP, oldProgressBP);
             }
 
             SCM.matchingParts.Clear();
@@ -963,6 +970,7 @@ namespace RP0
                 SpaceCenterManagement.Instance.RecoveredVessel.FacilityBuiltIn = vData?.FacilityBuiltIn ?? EditorFacility.None;
                 SpaceCenterManagement.Instance.RecoveredVessel.LCID = vData?.LCID ?? Guid.Empty;
                 SpaceCenterManagement.Instance.RecoveredVessel.LandedAt = FlightGlobals.ActiveVessel.landedAt;
+                SpaceCenterManagement.Instance.RecoveredVessel.Splashed = FlightGlobals.ActiveVessel.Splashed;
 
                 //KCT_GameStates.recoveredVessel.type = listType;
                 if (listType == ProjectType.SPH)
