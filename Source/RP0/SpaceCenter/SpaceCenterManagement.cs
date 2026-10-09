@@ -145,6 +145,9 @@ namespace RP0
         [KSPField(isPersistant = true)]
         public HireStaffProject staffTarget = new HireStaffProject();
 
+        [KSPField(isPersistant = true)]
+        public TransferEngineerProject transferTarget = new TransferEngineerProject();
+
         #endregion
 
         #region Fields
@@ -566,6 +569,10 @@ namespace RP0
                         KSCs.RemoveAt(i);
                         any = true;
                     }
+                    else if (ksc.KSCName != null && ksc.DisplayName == null)
+                    {
+                        ksc.DisplayName = KSCSwitcherInterop.GetSiteDisplayName(ksc.KSCName);
+                    }
 
                     if (any) KCTUtilities.RefreshGroundStationActiveState();
                 }
@@ -946,6 +953,11 @@ namespace RP0
                         lp.lastLoadedVesselId = default;
                 }
             }
+        }
+
+        public LCSpaceCenter FindKSC(string KSCName)
+        {
+            return KSCs.Find(k => k.KSCName == KSCName);
         }
 
         #endregion
@@ -1961,6 +1973,13 @@ namespace RP0
                 staffTarget.IncrementProgress(UTDiff);
                 if (staffTarget.IsComplete())
                     staffTarget.Clear();
+            }
+
+            if (transferTarget.IsValid)
+            {
+                transferTarget.IncrementProgress(UTDiff);
+                if (transferTarget.IsComplete())
+                    transferTarget.Clear();
             }
 
             Profiler.EndSample();
