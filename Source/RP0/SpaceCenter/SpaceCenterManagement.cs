@@ -182,6 +182,7 @@ namespace RP0
         public readonly List<Part> matchingParts = new List<Part>();
         public readonly Dictionary<Part, PartCompareResult> nonmatchingParts = new Dictionary<Part, PartCompareResult>();
 
+        private bool _isFlightReady;
         private DateTime _simMoveDeferTime = DateTime.MaxValue;
         private int _simMoveSecondsRemain = 0;
 
@@ -202,6 +203,9 @@ namespace RP0
             Instance = this;
 
             if (KSPUtils.CurrentGameIsMission()) return;
+
+            // Subscribed here rather than in Start so it can't miss PostInit's onFlightReady
+            GameEvents.onFlightReady.Add(OnFlightReady);
 
             KCTSettings.Instance.Load();
 
@@ -440,7 +444,7 @@ namespace RP0
                             // fire across the skipped time. Restored from the pre-sim backup on exit.
                             ModIntegrations.AlarmHelper.SuppressAllAlarmActions(SimulationParams.SimulationUT);
                             if (!ModUtils.IsPrincipiaInstalled)
-                                Planetarium.SetUniversalTime(SimulationParams.SimulationUT);
+                                SetSimulationUT(SimulationParams.SimulationUT);
                             else
                                 StartCoroutine(EaseSimulationUT_Coroutine(Planetarium.GetUniversalTime(), SimulationParams.SimulationUT));
                         }
@@ -492,6 +496,7 @@ namespace RP0
 
         public void OnDestroy()
         {
+            GameEvents.onFlightReady.Remove(OnFlightReady);
             _simWatermark?.DestroyGameObject();
 
             if (ToolbarControl != null)
@@ -1267,6 +1272,11 @@ namespace RP0
             }
         }
 
+        private void OnFlightReady()
+        {
+            _isFlightReady = true;
+        }
+
         private void ProcessSimulation()
         {
             HighLogic.CurrentGame.Parameters.Flight.CanAutoSave = false;
@@ -1284,6 +1294,10 @@ namespace RP0
                     simParams.IsVesselMoved = true;
                     return;
                 }
+
+                // Wait for FlightDriver.PostInit to capture the initial flight state with the vessel on the pad.
+                // Fixes Principia crash caused by packed vessel parts not being initialized (flightID 0).
+                if (!_isFlightReady) return;
 
                 int secondsForMove = simParams.DelayMoveSeconds;
                 if (_simMoveDeferTime == DateTime.MaxValue)
@@ -1711,13 +1725,29 @@ namespace RP0
                 FlightDriver.fetch.framesBeforeInitialSave += Time.frameCount - currentFrame;
                 currentFrame = Time.frameCount;
                 OrbitPhysicsManager.HoldVesselUnpack();
-                Planetarium.SetUniversalTime(nextUT);
+                SetSimulationUT(nextUT);
 
                 yield return new WaitForFixedUpdate();
             }
 
             OrbitPhysicsManager.HoldVesselUnpack();
-            Planetarium.SetUniversalTime(targetUT);
+            SetSimulationUT(targetUT);
+        }
+
+        /// <summary>
+        /// Jumps to the simulation UT without the loaded vessels living through the skipped time.
+        /// FlightIntegrator takes UT - Vessel.lastUT as elapsed time, so without the lastUT reset it runs
+        /// an analytic thermal update over the whole jump, and mods hooked into it (e.g. RealFuels boiloff)
+        /// apply that much time to the vessel.
+        /// </summary>
+        private static void SetSimulationUT(double ut)
+        {
+            Planetarium.SetUniversalTime(ut);
+            foreach (Vessel v in FlightGlobals.VesselsLoaded)
+            {
+                if (v.lastUT >= 0)
+                    v.lastUT = ut;
+            }
         }
 
         #endregion
