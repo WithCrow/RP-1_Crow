@@ -1,5 +1,7 @@
 using ROUtils;
 using System;
+using System.Collections.Generic;
+using UniLinq;
 using UnityEngine;
 
 namespace RP0
@@ -64,8 +66,7 @@ namespace RP0
             }
 
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("KSC Engineers")) { _personnelWindowHolder = 0; _personnelPosition.height = 1; }
-            if (KSCSwitcherInterop.IsKSCSwitcherInstalled && GUILayout.Button("All Engineers")) { _personnelWindowHolder = 1; _personnelPosition.height = 1; }
+            if (GUILayout.Button("Engineers")) { _personnelWindowHolder = 0; _personnelPosition.height = 1; }
             if (KSPUtils.CurrentGameHasScience() && GUILayout.Button("Researchers")) { _personnelWindowHolder = 2; _personnelPosition.height = 1; }
             GUILayout.EndHorizontal();
 
@@ -102,7 +103,13 @@ namespace RP0
             LaunchComplex currentLC = KSC.LaunchComplexes[_LCIndex];
 
             GUILayout.BeginHorizontal();
-            GUILayout.Label("Engineers:", GUILayout.Width(100));
+            GUILayout.Label($"Current KSC: <color=lime>{KSC.DisplayName}</color>");
+            GUILayout.FlexibleSpace();
+            if (KSCSwitcherInterop.IsKSCSwitcherInstalled && GUILayout.Button("Relocate Engineers")) { _personnelWindowHolder = 1; _personnelPosition.height = 1; }
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Engineers Here:", GUILayout.Width(100));
             GUILayout.Label(KSC.Engineers.ToString("N0"), GetLabelRightAlignStyle(), GUILayout.Width(100));
             GUILayout.Label("Unassigned:", GetLabelRightAlignStyle(), GUILayout.Width(100));
             GUILayout.Label(KSC.UnassignedEngineers.ToString("N0"), GetLabelRightAlignStyle());
@@ -234,16 +241,19 @@ namespace RP0
         private static void RenderAllEngineersSection()
         {
             GUILayout.BeginHorizontal();
-            GUILayout.Label("KSC (Total Engineers : Unassigned Engineers)");
+            GUILayout.Label("Active KSCs (Total Eng. : Unassigned Eng.)");
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("Back", GUILayout.Width(100))) { _personnelWindowHolder = 0; _personnelPosition.height = 1; originalSC = null; }
             GUILayout.EndHorizontal();
 
-            for (int i = 0; i < SpaceCenterManagement.Instance.KSCs.Count; ++i)
+            List<LCSpaceCenter> sortedKSCs = SpaceCenterManagement.Instance.KSCs.OrderBy(site => site != SpaceCenterManagement.Instance.ActiveSC).ThenByDescending(site => site.Engineers).ToList();
+
+            for (int i = 0; i < sortedKSCs.Count; ++i)
             {
-                LCSpaceCenter KSC = SpaceCenterManagement.Instance.KSCs[i];
+                LCSpaceCenter KSC = sortedKSCs[i];
 
                 bool isActiveSC = KSC == SpaceCenterManagement.Instance.ActiveSC;
-                bool isEmpty = KSC.IsEmpty;
-                if (isEmpty && !isActiveSC)
+                if (KSC.IsEmpty && !isActiveSC)
                     continue;
 
                 string site = KSC.DisplayName;
@@ -257,16 +267,16 @@ namespace RP0
                 switch (KSC.EngineerTransferType)
                 {
                     case TransferEngineerProject.EngineerTransferType.OutTransfer:
-                        site = $"{site} (Transferring Out)";
+                        site = $"{site} ({SpaceCenterManagement.Instance.transferTarget.NumLeftToLeave:N0} Transferring Out)";
                         break;
                     case TransferEngineerProject.EngineerTransferType.InTransfer:
-                        site = $"{site} (Transferring In)";
+                        site = $"{site} ({SpaceCenterManagement.Instance.transferTarget.engineerTransferTimes.Count:N0} In Transit, {SpaceCenterManagement.Instance.transferTarget.TransferredAmount:N0} Transferred)";
                         break;
                 }
                 GUILayout.Label(site, GUILayout.MinWidth(300));
                 if (originalSC == null)
                 {
-                    if (!isEmpty)
+                    if (!KSC.IsEmpty)
                     {
                         GUILayout.Space(10);
                         bool canAfford = KSC.UnassignedEngineers >= 1;
@@ -452,9 +462,9 @@ namespace RP0
                 string dialogName = "warpToStaff";
                 string dialogTitle = $"Auto hire {(isResearch ? "researchers" : "engineers")}";
 
-                if (SpaceCenterManagement.Instance.fundTarget.IsValid || SpaceCenterManagement.Instance.transferTarget.IsValid)
+                if (SpaceCenterManagement.Instance.WarpTargetActive && !SpaceCenterManagement.Instance.staffTarget.IsValid)
                 {
-                    string msg = "This functionality cannot be used while there is a Warp To Fund Target or engineer transferring in progress.";
+                    string msg = "This functionality cannot be used while a different warp target is in progress.";
                     PopupDialog.SpawnPopupDialog(new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
                         new MultiOptionDialog(dialogName, msg, dialogTitle, HighLogic.UISkin,
                             new DialogGUIButton("Understood", () => { })
@@ -495,9 +505,9 @@ namespace RP0
                 string dialogName = "warpToTransfer";
                 string dialogTitle = "Transfer engineers";
 
-                if (SpaceCenterManagement.Instance.fundTarget.IsValid || SpaceCenterManagement.Instance.staffTarget.IsValid)
+                if (SpaceCenterManagement.Instance.WarpTargetActive && !SpaceCenterManagement.Instance.transferTarget.IsValid)
                 {
-                    string msg = "This functionality cannot be used while there is a Warp To Fund Target or automatic staff hiring in progress.";
+                    string msg = "This functionality cannot be used while a different warp target is in progress.";
                     PopupDialog.SpawnPopupDialog(new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
                         new MultiOptionDialog(dialogName, msg, dialogTitle, HighLogic.UISkin,
                             new DialogGUIButton("Understood", () => { })
