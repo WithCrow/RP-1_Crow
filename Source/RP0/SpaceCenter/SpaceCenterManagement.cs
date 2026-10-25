@@ -186,6 +186,7 @@ namespace RP0
         public readonly Dictionary<Part, PartCompareResult> nonmatchingParts = new Dictionary<Part, PartCompareResult>();
 
         private bool _isFlightReady;
+        private bool _isSimGSTechLevelApplied;
         private DateTime _simMoveDeferTime = DateTime.MaxValue;
         private int _simMoveSecondsRemain = 0;
 
@@ -1294,6 +1295,14 @@ namespace RP0
                 {
                     ModUtils.ToggleFailures(!simParams.DisableFailures);
                 }
+
+                if (!_isSimGSTechLevelApplied)
+                {
+                    _isSimGSTechLevelApplied = true;
+                    if (simParams.SimGroundStationTechLevel >= 0)
+                        KCTUtilities.SetRAGroundStationTechLevel(simParams.SimGroundStationTechLevel);
+                }
+
                 if (!simParams.SimulateInOrbit || !FlightDriver.CanRevertToPrelaunch)
                 {
                     // Either the player does not want to start in orbit or they saved and then loaded back into that save
@@ -1760,7 +1769,11 @@ namespace RP0
 
         #region Editor
 
-        private void EditorRecalculation()
+        /// <summary>
+        /// Updates EditorVessel if the ship has changed since it was last calculated.
+        /// Runs once a second, and can be called to get current values without waiting for that.
+        /// </summary>
+        public void EditorRecalculation()
         {
             if (IsEditorRecalcuationRequired)
             {
