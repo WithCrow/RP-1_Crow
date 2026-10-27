@@ -258,6 +258,7 @@ namespace RP0
 
             double upkeep = Database.SettingsSC.facilityLevelCostMult * Math.Pow(cost, Database.SettingsSC.facilityLevelCostPow);
 
+            // The hangar's cost per engineer is already ~2x an LC's, so the LC multiplier isn't applied to it.
             if (facilityType == FacilityMaintenanceType.LC)
                 upkeep *= Database.SettingsSC.lcCostMultiplier;
 
