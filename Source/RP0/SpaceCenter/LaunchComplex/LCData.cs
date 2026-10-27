@@ -45,6 +45,37 @@ namespace RP0
 
         private static float MassMinFraction => Database.SettingsSC.lcMassMinFraction;
 
+        /// <summary>
+        /// 0 while the hangar handles at most hangarRocketPropellantFree litres of rocket propellant
+        /// (plane fuel is HangarIgnore and doesn't count), rising linearly to 1 at hangarRocketPropellantFull.
+        /// </summary>
+        public double GetHangarRocketPortion()
+        {
+            double rocketFuel = 0d;
+            foreach (var kvp in resourcesHandled)
+            {
+                var rType = Database.ResourceInfo.LCResourceTypes.ValueOrDefault(kvp.Key);
+                if ((rType & LCResourceType.Fuel) != 0 && (rType & LCResourceType.HangarIgnore) == 0)
+                    rocketFuel += kvp.Value;
+            }
+
+            double free = Database.SettingsSC.hangarRocketPropellantFree;
+            double full = Database.SettingsSC.hangarRocketPropellantFull;
+            if (full <= free)
+                return rocketFuel > free ? 1d : 0d;
+
+            return UtilMath.Clamp01((rocketFuel - free) / (full - free));
+        }
+
+        /// <summary>
+        /// Blends the plane-only hangar discount into the full cost by rocketPortion.
+        /// </summary>
+        public static double GetHangarDiscountedCost(double cost, double rocketPortion)
+        {
+            double discounted = Math.Min(cost, Math.Max(Database.SettingsSC.hangarCostForMaintenanceMin, cost - Database.SettingsSC.hangarCostForMaintenanceOffset));
+            return discounted + (cost - discounted) * rocketPortion;
+        }
+
         public static readonly LCData StartingHangar = new LCData("Hangar", float.MaxValue, float.MaxValue, new Vector3(40f, 10f, 40f), LaunchComplexType.Hangar, true, new PersistentDictionaryValueTypes<string, double>());
 
         public LCData() { }

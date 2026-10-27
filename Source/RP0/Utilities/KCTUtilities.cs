@@ -376,6 +376,8 @@ namespace RP0
                 {
                     if (SpaceCenterManagement.Instance.ActiveSC.Hangar.IsOperational)
                         dialogStr = $"the Hangar. Please switch to the Hangar as active launch complex and try again.";
+                    else if (SpaceCenterManagement.Instance.ActiveSC.Hangar.IsDecommissioned)
+                        dialogStr = $"the Hangar. You first need to recommission the Hangar before you can integrate this vessel.";
                     else
                         dialogStr = $"the Hangar. You must wait for the Hangar to finish renovating before you can integrate this vessel.";
                 }
@@ -796,7 +798,13 @@ namespace RP0
                 foreach (LaunchComplex LC in KSC.LaunchComplexes)
                 {
                     if (!LC.IsOperational)
+                    {
+                        // Non-blocking ops (e.g. recovery) still progress at an offline LC, so they can still finish next.
+                        foreach (var rr in LC.Recon_Rollout)
+                            if (!rr.IsBlocking)
+                                _checkTime(rr, ref shortestTime, ref thing);
                         continue;
+                    }
                     foreach (ISpaceCenterProject vp in LC.BuildList)
                         _checkTime(vp, ref shortestTime, ref thing);
                     foreach (ISpaceCenterProject rr in LC.GetAllLCOps())

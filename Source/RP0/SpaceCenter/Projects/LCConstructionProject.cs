@@ -9,6 +9,9 @@ namespace RP0
         public bool isModify = false;
 
         [Persistent]
+        public bool isRecommission = false;
+
+        [Persistent]
         public Guid modId;
 
         [Persistent]
@@ -49,7 +52,7 @@ namespace RP0
                 LaunchComplex lc = KSC.LaunchComplexes.Find(l => l.ID == lcID);
                 lc.IsOperational = true;
                 upgradeProcessed = true;
-                if (isModify)
+                if (isModify || isRecommission)
                     lc.Modify(lcData, modId);
 
                 ReassignEngineers(lc);
@@ -101,7 +104,7 @@ namespace RP0
 
                 ReassignEngineers(lc);
             }
-            else
+            else if (!isRecommission)
             {
                 KSC.LaunchComplexes[index].Delete();
             }

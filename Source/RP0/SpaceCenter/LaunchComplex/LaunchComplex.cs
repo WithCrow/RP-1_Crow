@@ -198,6 +198,8 @@ namespace RP0
 
         public bool IsEmpty => LCType == LaunchComplexType.Hangar && BuildList.Count == 0 && Warehouse.Count == 0 && Engineers == 0 && LCData.StartingHangar.Compare(this);
 
+        public bool IsDecommissioned => LCType == LaunchComplexType.Hangar && !IsOperational && !_ksc.LCConstructions.Any(c => c.lcID == ID);
+
         public bool IsActive => BuildList.Count > 0 || GetAllLCOps().Any(op => !op.IsComplete() && op.KeepsLCActive);
         public bool CanDismantle => CanModifyButton;
         public bool CanModifyButton => BuildList.Count == 0 && Warehouse.Count == 0 &&
@@ -350,6 +352,22 @@ namespace RP0
             }
 
             return null;
+        }
+
+        public void Decommission()
+        {
+            if (SpaceCenterManagement.Instance.staffTarget.LCID == ID)
+                SpaceCenterManagement.Instance.staffTarget.Clear();
+            KCTUtilities.ChangeEngineers(this, -Engineers);
+
+            if (_efficiencySource == null)
+                SpaceCenterManagement.Instance.LCToEfficiency.TryGetValue(this, out _efficiencySource);
+            _efficiencySource?.RemoveLC(this);
+            _efficiencySource = null;
+
+            IsOperational = false;
+            RecalculateBuildRates();
+            MaintenanceHandler.Instance?.ScheduleMaintenanceUpdate();
         }
 
         public void Delete()

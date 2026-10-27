@@ -20,6 +20,7 @@ namespace RP0
         private static readonly GUIContent _gcNoLCAvailableSomeConstructing = new GUIContent("No LC Available Now", "There is no operational launch complex. Build a new one or wait for an existing one to finish construction.");
         private static readonly GUIContent _gcNewLC = new GUIContent("New LC", "Build a new launch complex to support this vessel, with a margin of 10% to vessel mass and size upgrades.");
         private static readonly GUIContent _gcNoHangar = new GUIContent("Hangar Unavailable", "The Hangar is currently being modified.");
+        private static readonly GUIContent _gcRecommissionHangar = new GUIContent("Recommission Hangar", "The Hangar is decommissioned. Recommission it to use it once more.");
         private static readonly GUIContent _gcSwitchToHangar = new GUIContent("Switch to Hangar", "A Launch Complex is currently selected; this will switch to the Hangar, needed for planes.");
         private static readonly GUIContent _gcNonmatchingParts = new GUIContent("Toggle Non-Matching Part Highlights", "Red is differing cost. Yellow is differing mass. Blue is differing resources. Purple is no matching part name.");
         private static List<string> vesselFailedChecks = new List<string>();
@@ -278,10 +279,35 @@ namespace RP0
                 }
                 else
                 {
-                    if (SpaceCenterManagement.Instance.ActiveSC.Hangar.IsOperational)
+                    LaunchComplex hangar = SpaceCenterManagement.Instance.ActiveSC.Hangar;
+                    if (hangar.IsOperational)
                     {
                         if (GUILayout.Button(_gcSwitchToHangar))
-                            SpaceCenterManagement.Instance.ActiveSC.SwitchLaunchComplex(SpaceCenterManagement.Instance.ActiveSC.LaunchComplexes.IndexOf(SpaceCenterManagement.Instance.ActiveSC.Hangar));
+                            SpaceCenterManagement.Instance.ActiveSC.SwitchLaunchComplex(SpaceCenterManagement.Instance.ActiveSC.LaunchComplexes.IndexOf(hangar));
+                    }
+                    else if (hangar.IsDecommissioned)
+                    {
+                        if (GUILayout.Button(_gcRecommissionHangar))
+                        {
+                            SpaceCenterManagement.Instance.EditorRecalculation();
+                            if (EditorLogic.fetch.ship.parts.Count == 0)
+                            {
+                                ShowBuildVesselFirstDialog();
+                            }
+                            else
+                            {
+                                SpaceCenterManagement.Instance.ActiveSC.SwitchLaunchComplex(LCSpaceCenter.HangarIndex);
+                                SetFieldsFromVesselKeepOld(SpaceCenterManagement.Instance.EditorVessel, hangar);
+
+                                _wasShowBuildList = GUIStates.ShowBuildList;
+                                GUIStates.ShowModifyLC = true;
+                                GUIStates.ShowBuildList = false;
+                                GUIStates.ShowBLPlus = false;
+                                GUIStates.ShowNewLC = false;
+                                GUIStates.ShowLCResources = false;
+                                _centralWindowPosition.width = 300;
+                            }
+                        }
                     }
                     else
                     {

@@ -11,8 +11,11 @@ namespace RP0
             LaunchComplex activeLC = SpaceCenterManagement.Instance.ActiveSC.ActiveLC;
             bool isLC = GUIStates.ShowDismantleLC;
             GUILayout.BeginVertical();
-            GUILayout.Label("Are you sure you want to dismantle the currently selected " + 
-                (isLC ? $"launch complex, {activeLC.Name}" : $"launch pad, {activeLC.ActiveLPInstance.name}") + "? This cannot be undone!");
+            if (isLC && activeLC.LCType == LaunchComplexType.Hangar)
+                GUILayout.Label("Are you sure you want to decommission the Hangar? It can be recommissioned later.");
+            else
+                GUILayout.Label("Are you sure you want to dismantle the currently selected " +
+                    (isLC ? $"launch complex, {activeLC.Name}" : $"launch pad, {activeLC.ActiveLPInstance.name}") + "? This cannot be undone!");
             GUILayout.BeginHorizontal();
 
             if (GUILayout.Button("Yes"))
@@ -44,7 +47,7 @@ namespace RP0
             {
                 if (activeLC.LCType == LaunchComplexType.Hangar)
                 {
-                    ScreenMessages.PostScreenMessage("Dismantle failed: can't dismantle the Hangar", 5f, ScreenMessageStyle.UPPER_CENTER);
+                    TryDecommissionHangar(activeLC);
                     return;
                 }
 
@@ -111,6 +114,33 @@ namespace RP0
                 {
                     ScreenMessages.PostScreenMessage("Dismantle failed: " + err, 5f, ScreenMessageStyle.UPPER_CENTER);
                 }
+            }
+        }
+
+        private static void TryDecommissionHangar(LaunchComplex hangar)
+        {
+            if (!hangar.IsOperational)
+            {
+                ScreenMessages.PostScreenMessage("Decommission failed: the Hangar is already decommissioned.", 5f, ScreenMessageStyle.UPPER_CENTER);
+                return;
+            }
+
+            if (!hangar.CanDismantle)
+            {
+                ScreenMessages.PostScreenMessage("Decommission failed: the Hangar is in use.", 5f, ScreenMessageStyle.UPPER_CENTER);
+                return;
+            }
+
+            hangar.KSC.SwitchToPrevLaunchComplex();
+            hangar.Decommission();
+
+            try
+            {
+                SCMEvents.OnLCDismantled?.Fire(hangar);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogException(ex);
             }
         }
     }

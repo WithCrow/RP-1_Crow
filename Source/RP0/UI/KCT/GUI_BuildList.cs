@@ -1643,12 +1643,14 @@ namespace RP0
                     _centralWindowPosition.width = 300;
                 }
 
-                bool canDismantle = !isHangar && lc.LCType == LaunchComplexType.Pad && !HighLogic.LoadedSceneIsEditor;
+                bool canDismantle = (isHangar ? lc.IsOperational : lc.LCType == LaunchComplexType.Pad) && !HighLogic.LoadedSceneIsEditor;
                 if (canDismantle)
                 {
                     bool canDismantleNow = lc.CanDismantle;
                     const string dismantleFailTooltip = "Currently in use! No projects can be underway or vessels at pads/airlaunching.";
-                    if (GUILayout.Button(new GUIContent("Dismantle", canDismantleNow ? "Dismantle this Launch Complex." : dismantleFailTooltip),
+                    string dismantleText = isHangar ? "Decommission" : "Dismantle";
+                    string dismantleTooltip = isHangar ? "Decommission the Hangar to stop its upkeep. It can be recommissioned later." : "Dismantle this Launch Complex.";
+                    if (GUILayout.Button(new GUIContent(dismantleText, canDismantleNow ? dismantleTooltip : dismantleFailTooltip),
                         canDismantleNow ? GUI.skin.button : _redButton, GUILayout.ExpandWidth(false)))
                     {
                         if (canDismantleNow)
@@ -1673,6 +1675,26 @@ namespace RP0
                                 new DialogGUIButton(KSP.Localization.Localizer.GetStringByTag("#autoLOC_190905"), () => { })), false, HighLogic.UISkin).HideGUIsWhilePopup();
                         }
                     }
+                }
+
+                if (isHangar && lc.IsDecommissioned &&
+                    GUILayout.Button(new GUIContent("Recommission", "Rebuild the Hangar."), GUILayout.ExpandWidth(false)))
+                {
+                    ksc.SwitchLaunchComplex(i);
+                    SetFieldsFromLC(lc);
+                    _wasShowBuildList = GUIStates.ShowBuildList;
+                    GUIStates.ShowDismantlePad = false;
+                    GUIStates.ShowModifyLC = true;
+                    GUIStates.ShowDismantleLC = false;
+                    GUIStates.ShowNewPad = false;
+                    GUIStates.ShowNewLC = false;
+                    GUIStates.ShowLCResources = false;
+                    GUIStates.ShowLCManagement = false;
+                    GUIStates.ShowRename = false;
+                    GUIStates.ShowBuildList = false;
+                    GUIStates.ShowBLPlus = false;
+                    _centralWindowPosition.width = 300;
+                    _centralWindowPosition.height = 1;
                 }
 
                 if (!isHangar && lc.LCType == LaunchComplexType.Pad && !HighLogic.LoadedSceneIsEditor &&

@@ -23,10 +23,16 @@ namespace RP0
         public PersistentSortedListValueTypes<int, double> researchersToUnlockCreditSalaryMultipliers = new PersistentSortedListValueTypes<int, double>();
 
         [Persistent]
-        public double hangarCostForMaintenanceOffset = 0d;
+        public double hangarCostForMaintenanceOffset = 240000d;
 
         [Persistent]
-        public double hangarCostForMaintenanceMin = 0d;
+        public double hangarCostForMaintenanceMin = 20000d;
+
+        [Persistent]
+        public double hangarRocketPropellantFree = 3000d;
+
+        [Persistent]
+        public double hangarRocketPropellantFull = 15000d;
 
         [Persistent]
         public double lcCostMultiplier = 2d;

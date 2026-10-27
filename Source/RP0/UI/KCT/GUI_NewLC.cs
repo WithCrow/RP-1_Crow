@@ -205,6 +205,7 @@ namespace RP0
 
             bool isModify = GUIStates.ShowModifyLC;
             bool isHangar = isModify && activeLC.LCType == LaunchComplexType.Hangar;
+            bool isRecommission = isHangar && activeLC.IsDecommissioned;
 
             GUILayout.BeginVertical();
             if (isModify)
@@ -233,7 +234,7 @@ namespace RP0
                 GUILayout.Label($"{activeLC.MaxEngineers:N0}", GetLabelRightAlignStyle());
                 GUILayout.EndHorizontal();
 
-                double oldMaintenance = Math.Max(0d, MaintenanceHandler.Instance.ComputeDailyMaintenanceCost(oldVABCost + oldResCost + oldPadCost * lpMult, isHangar ? FacilityMaintenanceType.Hangar : FacilityMaintenanceType.LC));
+                double oldMaintenance = isRecommission ? 0d : Math.Max(0d, MaintenanceHandler.Instance.ComputeDailyMaintenanceCost(oldVABCost + oldResCost + oldPadCost * lpMult, isHangar ? FacilityMaintenanceType.Hangar : FacilityMaintenanceType.LC, activeLC.Stats.GetHangarRocketPortion()));
 
                 oldMaintenance = -CurrencyUtils.Funds(TransactionReasonsRP0.StructureRepairLC, -oldMaintenance);
                 GUILayout.BeginHorizontal();
@@ -386,8 +387,8 @@ namespace RP0
             }
 
             double oldTotalCost;
-            
-            if (isModify)
+
+            if (isModify && !isRecommission)
             {
                 // Enforce a min cost for pad size changes
                 const double minPadModifyCost = 1000d;
@@ -417,6 +418,8 @@ namespace RP0
             else
             {
                 totalCost += curVABCost + curResCost;
+                if (isRecommission)
+                    totalCost = LCData.GetHangarDiscountedCost(totalCost, _newLCData.GetHangarRocketPortion());
                 oldTotalCost = 0d;
             }
 
@@ -439,7 +442,7 @@ namespace RP0
                 double buildTime = ConstructionProject.CalculateBuildTime(totalCost, oldTotalCost, SpaceCenterFacility.LaunchPad, null);
                 double buildCost = -CurrencyUtils.Funds(TransactionReasonsRP0.StructureConstructionLC, -totalCost);
                 string sBuildTime = RP0DTUtils.PrintDateDelta(buildTime, includeTime: false);
-                string costString = isModify ? "Modify Cost:" : "Build Cost:";
+                string costString = isModify && !isRecommission ? "Modify Cost:" : "Build Cost:";
                 GUILayout.BeginHorizontal();
                 GUILayout.Label(costString, GUILayout.ExpandWidth(false));
                 GUILayout.Label(new GUIContent($"√{buildCost:N0}", $"Daily: √{(buildCost * 86400d / buildTime):N1}"), GetLabelRightAlignStyle());
@@ -456,7 +459,7 @@ namespace RP0
                 GUILayout.Label(new GUIContent(sBuildTime, "At 100% work rate"), GetLabelRightAlignStyle());
                 GUILayout.EndHorizontal();
 
-                double projectedMaintenance = MaintenanceHandler.Instance?.ComputeDailyMaintenanceCost(totalCostForMaintenance, isHangar ? FacilityMaintenanceType.Hangar : FacilityMaintenanceType.LC) ?? 0;
+                double projectedMaintenance = MaintenanceHandler.Instance?.ComputeDailyMaintenanceCost(totalCostForMaintenance, isHangar ? FacilityMaintenanceType.Hangar : FacilityMaintenanceType.LC, _newLCData.GetHangarRocketPortion()) ?? 0;
 
                 if (projectedMaintenance > 0d)
                 {
@@ -496,13 +499,14 @@ namespace RP0
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
-            _assignEngOnComplete = GUILayout.Toggle(_assignEngOnComplete, new GUIContent((isModify ? "Reassign free engineers on complete" : "Assign free engineers on complete"),
-                (isModify ? $"If selected, any unassigned engineers will be reassigned to this facility when reconstruction completes, up to a maximum of {activeLC.Engineers}"
+            bool isRenovation = isModify && !isRecommission;
+            _assignEngOnComplete = GUILayout.Toggle(_assignEngOnComplete, new GUIContent((isRenovation ? "Reassign free engineers on complete" : "Assign free engineers on complete"),
+                (isRenovation ? $"If selected, any unassigned engineers will be reassigned to this facility when reconstruction completes, up to a maximum of {activeLC.Engineers}"
                 : "If selected, unassigned engineers will be assigned to this facility when construction completes, up to the facility's maximum capacity")));
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button(isModify ? "Modify" : "Build") && ValidateLCCreationParameters(_newLCData, isModify ? activeLC : null))
+            if (GUILayout.Button(isRecommission ? "Recommission" : isModify ? "Modify" : "Build") && ValidateLCCreationParameters(_newLCData, isModify ? activeLC : null))
             {
                 if (HighLogic.LoadedSceneIsEditor && !SpaceCenterManagement.Instance.EditorVessel.MeetsFacilityRequirements(_newLCData, null))
                 {
@@ -512,14 +516,14 @@ namespace RP0
                         "Are You Sure?", HighLogic.UISkin,
                     new DialogGUIButton("#autoLOC_190905", () =>
                     {
-                        ProcessNewLC(isModify, curPadCost, totalCost, oldTotalCost);
+                        ProcessNewLC(isModify, isRecommission, curPadCost, totalCost, oldTotalCost);
                     }),
                     new DialogGUIButton("#autoLOC_191154", () => { })
                     ), false, HighLogic.UISkin).HideGUIsWhilePopup();
                 }
                 else
                 {
-                    ProcessNewLC(isModify, curPadCost, totalCost, oldTotalCost);
+                    ProcessNewLC(isModify, isRecommission, curPadCost, totalCost, oldTotalCost);
                 }
             }
             //if (HighLogic.LoadedSceneIsEditor)
@@ -557,7 +561,7 @@ namespace RP0
                 GUI.DragWindow();
         }
 
-        private static void ProcessNewLC(bool isModify, double curPadCost, double totalCost, double oldTotalCost)
+        private static void ProcessNewLC(bool isModify, bool isRecommission, double curPadCost, double totalCost, double oldTotalCost)
         {
             LaunchComplex activeLC = SpaceCenterManagement.Instance.ActiveSC.ActiveLC;
 
@@ -581,7 +585,11 @@ namespace RP0
                 {
                     RP0Debug.Log($"Building/Modifying launch complex {_newLCData.Name}");
                     if (isModify)
+                    {
                         activeLC.Modify(_newLCData, Guid.NewGuid());
+                        if (isRecommission)
+                            activeLC.IsOperational = true;
+                    }
                     else
                     {
                         SpaceCenterManagement.Instance.ActiveSC.LaunchComplexes.Add(new LaunchComplex(_newLCData, SpaceCenterManagement.Instance.ActiveSC)
@@ -594,8 +602,13 @@ namespace RP0
                 {
                     RP0Debug.Log($"Building/Modifying launch complex {_newLCData.Name}");
                     LaunchComplex lc;
-                    int engineers = isModify ? activeLC.Engineers : LaunchComplex.MaxEngineersCalc(_newLCData.massMax, _newLCData.sizeMax, _newLCData.isHumanRated);
-                    if (isModify)
+                    int engineers = isModify && !isRecommission ? activeLC.Engineers : LaunchComplex.MaxEngineersCalc(_newLCData.massMax, _newLCData.sizeMax, _newLCData.isHumanRated);
+                    if (isRecommission)
+                    {
+                        lc = activeLC;
+                        SpaceCenterManagement.Instance.ActiveSC.SwitchToPrevLaunchComplex();
+                    }
+                    else if (isModify)
                     {
                         lc = activeLC;
                         if (SpaceCenterManagement.Instance.staffTarget.LCID == lc.ID)
@@ -626,7 +639,8 @@ namespace RP0
                         lcID = lc.ID,
                         cost = totalCost,
                         name = _newLCData.Name,
-                        isModify = isModify,
+                        isModify = isModify && !isRecommission,
+                        isRecommission = isRecommission,
                         modId = isModify ? Guid.NewGuid() : lc.ModID,
                         lcData = modData
                     };
@@ -654,7 +668,7 @@ namespace RP0
                 if (!HighLogic.LoadedSceneIsEditor || _wasShowBuildList)
                     GUIStates.ShowBuildList = true;
 
-                if (KSPUtils.CurrentGameIsCareer() && isModify)
+                if (KSPUtils.CurrentGameIsCareer() && isModify && !isRecommission)
                 {
                     PopupDialog.SpawnPopupDialog(new Vector2(0.5f, 0.5f),
                                          new Vector2(0.5f, 0.5f),
@@ -801,6 +815,18 @@ namespace RP0
             {
                 ScreenMessages.PostScreenMessage("Please enter a valid size");
                 return false;
+            }
+
+            if (existingLC != null)
+            {
+                foreach (var cons in existingLC.KSC.LCConstructions)
+                {
+                    if (cons.lcID == existingLC.ID)
+                    {
+                        ScreenMessages.PostScreenMessage("This complex is already under construction");
+                        return false;
+                    }
+                }
             }
 
             if (existingLC != null && existingLC.LCType == LaunchComplexType.Hangar)
