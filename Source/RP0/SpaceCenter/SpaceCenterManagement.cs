@@ -180,6 +180,7 @@ namespace RP0
         public readonly Dictionary<Part, PartCompareResult> nonmatchingParts = new Dictionary<Part, PartCompareResult>();
 
         private bool _isFlightReady;
+        private bool _isSimGSTechLevelApplied;
         private DateTime _simMoveDeferTime = DateTime.MaxValue;
         private int _simMoveSecondsRemain = 0;
 
@@ -206,13 +207,9 @@ namespace RP0
 
             KCTSettings.Instance.Load();
 
-            if (PresetManager.Instance == null)
-            {
-                PresetManager.Instance = new PresetManager();
-            }
-            PresetManager.Instance.SetActiveFromSaveData();
+            SCMSaveSettings.LoadForCurrentSave();
 
-            if (HighLogic.LoadedScene == GameScenes.SPACECENTER || PresetManager.Instance.ActivePreset?.GeneralSettings?.Enabled == true)
+            if (HighLogic.LoadedScene == GameScenes.SPACECENTER || SCMSaveSettings.Instance?.Enabled == true)
             {
                 var obj = new GameObject("KCTToolbarControl");
                 ToolbarControl = obj.AddComponent<ToolbarControl>();
@@ -240,7 +237,7 @@ namespace RP0
 
             if (IsFirstStart)
             {
-                PresetManager.Instance.SaveActiveToSaveData();
+                SCMSaveSettings.Instance.Save();
             }
 
             if (KCT_GUI.IsPrimarilyDisabled &&
@@ -251,7 +248,7 @@ namespace RP0
 
             KACWrapper.InitKACWrapper();
 
-            if (!PresetManager.Instance.ActivePreset.GeneralSettings.Enabled)
+            if (!SCMSaveSettings.Instance.Enabled)
             {
                 if (InputLockManager.GetControlLock(SCMKSCLock) == ControlTypes.KSC_FACILITIES)
                     InputLockManager.RemoveControlLock(SCMKSCLock);
@@ -347,7 +344,7 @@ namespace RP0
         private void StartFinished()
         {
             RP0Debug.Log("DelayedStart start");
-            if (PresetManager.Instance?.ActivePreset == null || !PresetManager.Instance.ActivePreset.GeneralSettings.Enabled)
+            if (SCMSaveSettings.Instance?.Enabled != true)
                 return;
 
             if (KCT_GUI.IsPrimarilyDisabled && !IsSimulatedFlight) return;
@@ -461,7 +458,7 @@ namespace RP0
         public void FixedUpdate()
         {
             if (KSPUtils.CurrentGameIsMission()) return;
-            if (!PresetManager.Instance?.ActivePreset?.GeneralSettings.Enabled == true)
+            if (SCMSaveSettings.Instance?.Enabled != true)
                 return;
             double UT = Planetarium.GetUniversalTime();
             if (_lastRateUpdateUT == 0d)
@@ -1276,6 +1273,14 @@ namespace RP0
                 {
                     ModUtils.ToggleFailures(!simParams.DisableFailures);
                 }
+
+                if (!_isSimGSTechLevelApplied)
+                {
+                    _isSimGSTechLevelApplied = true;
+                    if (simParams.SimGroundStationTechLevel >= 0)
+                        KCTUtilities.SetRAGroundStationTechLevel(simParams.SimGroundStationTechLevel);
+                }
+
                 if (!simParams.SimulateInOrbit || !FlightDriver.CanRevertToPrelaunch)
                 {
                     // Either the player does not want to start in orbit or they saved and then loaded back into that save
@@ -1742,7 +1747,11 @@ namespace RP0
 
         #region Editor
 
-        private void EditorRecalculation()
+        /// <summary>
+        /// Updates EditorVessel if the ship has changed since it was last calculated.
+        /// Runs once a second, and can be called to get current values without waiting for that.
+        /// </summary>
+        public void EditorRecalculation()
         {
             if (IsEditorRecalcuationRequired)
             {
@@ -2132,7 +2141,7 @@ namespace RP0
 
         private void QueueRepairFailures()
         {
-            KCT_Preset_General settings = PresetManager.Instance.ActivePreset.GeneralSettings;
+            SCMSaveSettings settings = SCMSaveSettings.Instance;
             if (settings.BuildTimes)
             {
                 var dataModule = FlightGlobals.ActiveVessel.vesselModules.Find(vm => vm is KCTVesselTracker) as KCTVesselTracker;
