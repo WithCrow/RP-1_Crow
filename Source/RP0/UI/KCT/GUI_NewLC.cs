@@ -234,7 +234,7 @@ namespace RP0
                 GUILayout.Label($"{activeLC.MaxEngineers:N0}", GetLabelRightAlignStyle());
                 GUILayout.EndHorizontal();
 
-                double oldMaintenance = isRecommission ? 0d : Math.Max(0d, MaintenanceHandler.Instance.ComputeDailyMaintenanceCost(oldVABCost + oldResCost + oldPadCost * lpMult, isHangar ? FacilityMaintenanceType.Hangar : FacilityMaintenanceType.LC, activeLC.Stats.GetHangarRocketPortion()));
+                double oldMaintenance = Math.Max(0d, MaintenanceHandler.Instance.ComputeDailyMaintenanceCost(oldVABCost + oldResCost + oldPadCost * lpMult, isHangar ? FacilityMaintenanceType.Hangar : FacilityMaintenanceType.LC, activeLC.Stats.GetHangarRocketPortion()));
 
                 oldMaintenance = -CurrencyUtils.Funds(TransactionReasonsRP0.StructureRepairLC, -oldMaintenance);
                 GUILayout.BeginHorizontal();
@@ -472,6 +472,31 @@ namespace RP0
             }
 
             LCEfficiency closestEff = LCEfficiency.FindClosest(_newLCData, out double closeness);
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Closest Existing LC:", GUILayout.ExpandWidth(false));
+            GUILayout.Label(closeness > 0 ? closestEff.FirstLCName() : "None", GetLabelRightAlignStyle());
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Commonality:");
+            GUILayout.Label(closeness.ToString("P0"), GetLabelRightAlignStyle());
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if (closeness == 1d)
+            {
+                const string sharedEfficTooltip = "Increases in efficiency will be fully shared between these two LCs.";
+                GUILayout.Label(new GUIContent("Uses shared efficiency:", sharedEfficTooltip));
+                GUILayout.Label(new GUIContent(closestEff.Efficiency.ToString("P1"), sharedEfficTooltip), GetLabelRightAlignStyle());
+            }
+            else
+            {
+                const string startingEffTooltip = "Based on current efficiency of the closest LC, if any, and the current tech level. Will be recalculated when this LC becomes operational.";
+                GUILayout.Label(new GUIContent("Starting Efficiency:", startingEffTooltip));
+                GUILayout.Label(new GUIContent((closeness > 0 ? Math.Max(LCEfficiency.MinEfficiency, closestEff.PostClosenessStartingEfficiency(closeness)) : LCEfficiency.MinEfficiency).ToString("P1"), startingEffTooltip), GetLabelRightAlignStyle());
+            }
+            GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
             GUILayout.Label("Closest Existing LC:", GUILayout.ExpandWidth(false));

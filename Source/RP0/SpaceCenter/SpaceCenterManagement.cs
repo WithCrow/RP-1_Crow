@@ -1009,7 +1009,7 @@ namespace RP0
         }
 
         /// <summary>
-        /// The hangar caps engineers per vessel/project, so only part of its staff may be working.
+        /// SPH engineers are capped based on weight
         /// </summary>
         private static int GetHangarWorkingEngineers(LaunchComplex lc)
         {

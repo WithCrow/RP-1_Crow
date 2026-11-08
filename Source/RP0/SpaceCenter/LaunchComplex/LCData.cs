@@ -47,7 +47,6 @@ namespace RP0
 
         /// <summary>
         /// 0 while the hangar handles at most hangarRocketPropellantFree litres of rocket propellant
-        /// (plane fuel is HangarIgnore and doesn't count), rising linearly to 1 at hangarRocketPropellantFull.
         /// </summary>
         public double GetHangarRocketPortion()
         {
@@ -68,7 +67,7 @@ namespace RP0
         }
 
         /// <summary>
-        /// Blends the plane-only hangar discount into the full cost by rocketPortion.
+        /// See what the discount is with rocketPortion
         /// </summary>
         public static double GetHangarDiscountedCost(double cost, double rocketPortion)
         {
