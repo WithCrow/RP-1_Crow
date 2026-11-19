@@ -1240,7 +1240,7 @@ namespace RP0
                     RP0Debug.Log($"cP.crewList.Count: {cp.CrewList.Count}");
                     foreach (CrewMemberAssignment assign in crewList)
                     {
-                        ProtoCrewMember crewMember = assign.PCM;
+                        ProtoCrewMember crewMember = assign?.PCM;
                         if (crewMember == null)
                             continue;
 
@@ -1841,7 +1841,7 @@ namespace RP0
                 {
                     if (oldFac == EditorFacility.VAB)
                     {
-                        if (oldLC.LCType == LaunchComplexType.Pad)
+                        if (oldLC != null && oldLC.LCType == LaunchComplexType.Pad)
                         {
                             // cache this off -- we swapped editors
                             PreEditorSwapLCID = oldLC.ID;
@@ -1937,10 +1937,7 @@ namespace RP0
                 if (ActiveSC.ActiveLC.ActiveLPInstance is LCLaunchPad pad)
                 {
                     if (KCTUtilities.GetFacilityLevel(SpaceCenterFacility.LaunchPad) != pad.level)
-                    {
-                        ActiveSC.ActiveLC.SwitchLaunchPad(ActiveSC.ActiveLC.ActiveLaunchPadIndex, false);
-                        pad.UpdateLaunchpadDestructionState(false);
-                    }
+                        pad.SetActive();
                 }
                 yield return _wfsHalf;
             }
@@ -2010,7 +2007,7 @@ namespace RP0
                 double researchTime = UTDiff;
                 while (researchTime > 0d && TechList.Count > 0)
                 {
-                    researchTime = TechList[0].IncrementProgress(UTDiff);
+                    researchTime = TechList[0].IncrementProgress(researchTime);
                 }
 
                 if (fundTarget.IsValid && fundTarget.GetTimeLeft() < 0.5d)
@@ -2046,7 +2043,7 @@ namespace RP0
                 double timeForBuild = UTDiff;
                 while (timeForBuild > 0d && currentLC.BuildList.Count > 0)
                 {
-                    timeForBuild = currentLC.BuildList[0].IncrementProgress(UTDiff);
+                    timeForBuild = currentLC.BuildList[0].IncrementProgress(timeForBuild);
                 }
 
                 for (int i = currentLC.Recon_Rollout.Count; i-- > 0;)
