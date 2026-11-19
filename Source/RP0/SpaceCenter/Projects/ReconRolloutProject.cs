@@ -24,6 +24,12 @@ namespace RP0
         [Persistent]
         public RolloutReconType RRType = RolloutReconType.None;
 
+        [Persistent]
+        public string airlaunchCarrier = string.Empty; // Airlaunch carrier name
+
+        [Persistent]
+        public double airlaunchVelocity, airlaunchAltitude; // velocity in m/s altitude in m
+
         public override TransactionReasonsRP0 TransactionReason
         {
             get
@@ -115,9 +121,11 @@ namespace RP0
         /// <param name="type"></param>
         /// <param name="id"></param>
         /// <param name="launchSite"></param>
-        public ReconRolloutProject(VesselProject vessel, RolloutReconType type, string id, string launchSite = "")
+        /// <param name="carrier">Airlaunch carrier, only used for airlaunch types</param>
+        public ReconRolloutProject(VesselProject vessel, RolloutReconType type, string id, string launchSite = "", AirlaunchTechLevel carrier = null)
         {
             RRType = type;
+            airlaunchCarrier = carrier?.name ?? string.Empty;
             associatedID = id;
             launchPadID = string.IsNullOrEmpty(launchSite) ? vessel.launchSite : launchSite;    //For when we add custom launchpads
             progress = 0;
@@ -155,12 +163,12 @@ namespace RP0
                     break;
 
                 case RolloutReconType.AirlaunchMount:
-                    BP = Formula.GetAirlaunchBP(vessel);
-                    cost = Formula.GetAirlaunchCost(vessel);
+                    BP = Formula.GetAirlaunchBP(vessel, carrier);
+                    cost = Formula.GetAirlaunchCost(vessel, carrier);
                     break;
 
                 case RolloutReconType.AirlaunchUnmount:
-                    BP = Formula.GetAirlaunchBP(vessel);
+                    BP = Formula.GetAirlaunchBP(vessel, carrier);
                     progress = BP; // starts complete, runs in reverse
                     break;
             }
