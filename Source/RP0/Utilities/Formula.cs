@@ -179,9 +179,6 @@ namespace RP0
         /// </summary>
         public static double GetRefurbishmentCost(VesselProject vessel)
         {
-            if (!PresetManager.Instance.ActivePreset.GeneralSettings.Enabled)
-                return 0;
-
             return RefurbishmentCost(vessel.inputs);
         }
 
@@ -192,9 +189,6 @@ namespace RP0
         /// </summary>
         public static double GetRecoveryCost(VesselProject vessel)
         {
-            if (!PresetManager.Instance.ActivePreset.GeneralSettings.Enabled)
-                return 0;
-
             return RecoveryCost(vessel.inputs);
         }
 
