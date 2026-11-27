@@ -522,6 +522,9 @@ namespace RP0
         public VesselProject CreateCopy()
         {
             VesselProject ret = new VesselProject(shipName, launchSite, effectiveCost, buildPoints, flag, cost, FacilityBuiltIn, humanRated);
+            // The constructor derives Type from FacilityBuiltIn, which can be None for recovered vessels.
+            ret.Type = Type;
+            ret.clampState = clampState;
             ret._lc = _lc;
             ret._lcID = _lcID;
             ret.globalTags = globalTags.Clone() as PersistentHashSetValueType<string>;
@@ -595,6 +598,8 @@ namespace RP0
 
         public void Launch(bool fillFuel = false)
         {
+            BackupSaves.Create(BackupSaves.Kind.Launch, shipName);
+
             HighLogic.CurrentGame.editorFacility = GetEditorFacility() == EditorFacilities.VAB ? EditorFacility.VAB : EditorFacility.SPH;
 
             LaunchComplex lc = SpaceCenterManagement.Instance.FindLCFromID(_lcID);
@@ -1434,7 +1439,7 @@ namespace RP0
 
             newEff = LC.Efficiency;
             double bp = buildPoints;
-            double rate = KCTUtilities.GetBuildRate(LC, GetTotalMass(), bp, humanRated) * LC.StrategyRateMultiplier * LeaderEffect;
+            double rate = KCTUtilities.GetBuildRate(LC, GetTotalMass(), bp, humanRated) * LC.StrategyRateMultiplier * LeaderEffect * LC.RushRate;
             if (rate == 0)
                 return double.PositiveInfinity;
 

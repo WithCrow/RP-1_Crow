@@ -39,6 +39,8 @@ namespace RP0
                 _buyModifier = _buyModifierMultsPersonnel[0];
             }
 
+            EnsureValidPersonnelLCIndex();
+
             GUILayout.BeginVertical();
 
             GUILayout.BeginHorizontal();
@@ -95,6 +97,19 @@ namespace RP0
             GUILayout.EndVertical();
             if (!Input.GetMouseButtonDown(1) && !Input.GetMouseButtonDown(2))
                 GUI.DragWindow();
+        }
+
+        /// <summary>
+        /// LCs can be removed, reordered or taken offline for modification while the window is open,
+        /// so fall back to the active LC when the selected index is no longer usable.
+        /// </summary>
+        private static void EnsureValidPersonnelLCIndex()
+        {
+            LCSpaceCenter ksc = SpaceCenterManagement.Instance.ActiveSC;
+            if (_LCIndex >= 0 && _LCIndex < ksc.LaunchComplexes.Count && ksc.LaunchComplexes[_LCIndex].IsOperational)
+                return;
+
+            _LCIndex = ksc.LCIndex;
         }
 
         private static void RenderKSCEngineersSection()
