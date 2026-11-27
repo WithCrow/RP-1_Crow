@@ -984,6 +984,19 @@ namespace RP0
                 SpaceCenterManagement.Instance.RecoveredVessel.LandedAt = FlightGlobals.ActiveVessel.landedAt;
                 SpaceCenterManagement.Instance.RecoveredVessel.Splashed = FlightGlobals.ActiveVessel.Splashed;
 
+                // The original LC can be missing: it was dismantled or the vessel has no tracking data
+                if (SpaceCenterManagement.Instance.RecoveredVessel.LC == null)
+                {
+                    LaunchComplex fallbackLC = FindRecoveryLC(listType);
+                    if (fallbackLC == null)
+                    {
+                        RP0Debug.LogError("No operational LC of matching type found for the recovered vessel.");
+                        SpaceCenterManagement.Instance.RecoveredVessel = new VesselProject();
+                        return false;
+                    }
+                    SpaceCenterManagement.Instance.RecoveredVessel.LC = fallbackLC;
+                }
+
                 //KCT_GameStates.recoveredVessel.type = listType;
                 if (listType == ProjectType.SPH)
                     SpaceCenterManagement.Instance.RecoveredVessel.launchSite = "Runway";
@@ -1027,6 +1040,23 @@ namespace RP0
                 ShipConstruction.ClearBackups();
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Finds an operational LC that can store a recovered vessel of the given type.
+        /// Prefers the active LC, then the first matching one in the active space center.
+        /// </summary>
+        /// <returns>The LC, or null if there is none</returns>
+        private static LaunchComplex FindRecoveryLC(ProjectType listType)
+        {
+            LCSpaceCenter sc = SpaceCenterManagement.Instance.ActiveSC;
+            LaunchComplexType lcType = listType == ProjectType.SPH ? LaunchComplexType.Hangar : LaunchComplexType.Pad;
+
+            LaunchComplex activeLC = sc.ActiveLC;
+            if (activeLC != null && activeLC.IsOperational && activeLC.LCType == lcType)
+                return activeLC;
+
+            return sc.LaunchComplexes.Find(lc => lc.IsOperational && lc.LCType == lcType);
         }
 
         /// <summary>
@@ -1356,6 +1386,13 @@ namespace RP0
             {
                 foreach (PartModule pm in p.Modules)
                 {
+                    // Experiments installed through Kerbalism Configure setups can have entry costs
+                    if (pm is KERBALISM.Configure configure)
+                    {
+                        foreach (KERBALISM.ConfigureSetup setup in ECMHelper.GetSelectedSetups(configure))
+                            ecmPartsList.UnionWith(ECMHelper.GetEcmNamesFromConfigureSetup(configure, setup));
+                    }
+
                     var types = new[] { typeof(string).MakeByRefType(), typeof(bool).MakeByRefType(), typeof(float).MakeByRefType(), typeof(string).MakeByRefType() };
                     var mi = pm.GetType().GetMethod("Validate", BindingFlags.Instance | BindingFlags.Public, null, types, null);
                     if (mi != null)
