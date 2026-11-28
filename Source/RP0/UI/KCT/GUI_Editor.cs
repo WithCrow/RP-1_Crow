@@ -59,6 +59,18 @@ namespace RP0
         private static string RefurbishmentProjectionTooltip =>
             "Projected cost for a dry landing with your purchased refurbishment upgrades. " +
             $"Splashing down multiplies time by {Database.SettingsRecovery.SplashdownPenaltyMult:0.##}x and if you land at KSC by 0.8x.";
+        private static void DrawEditorAirlaunchInfo(VesselProject vessel)
+        {
+            if (vessel == null || AirlaunchTechLevel.All.Count == 0)
+                return;
+
+            if (GUILayout.Button("Airlaunch Capability"))
+            {
+                _airlaunchCapabilityWindowPosition.height = 1;
+                GUIStates.ShowAirlaunchCapability = !GUIStates.ShowAirlaunchCapability;
+            }
+        }
+
         public static void DrawEditorGUI(int windowID)
         {
             if (EditorLogic.fetch == null)
@@ -206,6 +218,9 @@ namespace RP0
                         + (isHangar ? "\nModify Hangar" : "\nModify LC or select another LC"),
                         _yellowText);
                 }
+
+                if (isHangar)
+                    DrawEditorAirlaunchInfo(SpaceCenterManagement.Instance.EditorVessel);
             }
 
             GUILayout.BeginHorizontal();
