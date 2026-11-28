@@ -12,6 +12,17 @@ namespace RP0.Harmony
     {
         internal static int ContractSortAvailable(Contract a, Contract b)
         {
+            // Race contracts go to the bottom
+            if (a is ConfiguredContract ccA && b is ConfiguredContract ccB)
+            {
+                bool aRace = ContractUtils.ContractIsRace(ccA);
+                bool bRace = ContractUtils.ContractIsRace(ccB);
+                if (aRace != bRace)
+                {
+                    return bRace ? -1 : 1;
+                }
+            }
+
             return RUIutils.SortAscDescPrimarySecondary(true, a.Prestige.CompareTo(b.Prestige), a.Title.CompareTo(b.Title));
         }
 
@@ -19,7 +30,13 @@ namespace RP0.Harmony
         {
             if (a is ConfiguredContract ccA && b is ConfiguredContract ccB)
             {
-                // Normal contracts, then Records, then Skopos maintenance
+                // Normal contracts, then Records, then Skopos maintenance, then Race
+                bool aRace = ContractUtils.ContractIsRace(ccA);
+                bool bRace = ContractUtils.ContractIsRace(ccB);
+                if (aRace != bRace)
+                {
+                    return bRace ? -1 : 1;
+                }
                 bool aSkopos = ContractUtils.ContractIsSkoposMaintenance(ccA);
                 bool bSkopos = ContractUtils.ContractIsSkoposMaintenance(ccB);
                 if (aSkopos != bSkopos)
