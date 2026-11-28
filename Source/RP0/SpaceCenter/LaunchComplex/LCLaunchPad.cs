@@ -148,6 +148,12 @@ namespace RP0
                     int idx = currentLC.LaunchPads.IndexOf(this);
                     if (idx < 0) continue;
 
+                    if (currentLC.IsMothballed)
+                    {
+                        failReason = "the launch complex is decommissioned";
+                        return false;
+                    }
+
                     foreach (var rr in currentLC.Recon_Rollout)
                     {
                         if (rr.launchPadID != name)

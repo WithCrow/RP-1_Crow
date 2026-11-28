@@ -292,8 +292,82 @@ namespace RP0
             return 0d;
         }
 
+        private static double MothballUpkeepFactorDays(double days) =>
+            Formula.MothballUpkeepFactor(days, Database.SettingsSC.MothballUpkeepLambda, Database.SettingsSC.MothballUpkeepK);
+
+        /// <summary>
+        /// Upkeep of a mothballed LC: full * curve(dormant time). During reactivation the dormant clock is frozen
+        /// and upkeep ramps linearly from that frozen value to full as the project progresses.
+        /// </summary>
+        private double MothballedLCUpkeep(LaunchComplex lc)
+        {
+            double full = LCUpkeep(lc, lc.PadsAtMothball);
+            double frozen = full * MothballUpkeepFactorDays(lc.DormantTime / 86400d);
+            LCConstructionProject proj = lc.ReactivationProject;
+            if (proj == null)
+                return frozen;
+
+            double frac = proj.BP > 0d ? Math.Min(1d, proj.progress / proj.BP) : 1d;
+            return UtilMath.LerpUnclamped(frozen, full, frac);
+        }
+
+        /// <summary>
+        /// Average daily upkeep of the LC over the next <paramref name="deltaTime"/> seconds, following the
+        /// mothball curve (or the reactivation ramp, then full upkeep). Non-mothballed LCs return their current upkeep.
+        /// </summary>
+        public double LCUpkeepAverage(LaunchComplex lc, double deltaTime)
+        {
+            if (!lc.IsMothballed || deltaTime <= 0d)
+                return LCUpkeep(lc);
+
+            double full = LCUpkeep(lc, lc.PadsAtMothball);
+            var s = Database.SettingsSC;
+            LCConstructionProject proj = lc.ReactivationProject;
+            if (proj == null)
+            {
+                double t0 = lc.DormantTime / 86400d;
+                double days = deltaTime / 86400d;
+                return full * Formula.MothballUpkeepFactorIntegral(t0, t0 + days, s.MothballUpkeepLambda, s.MothballUpkeepK) / days;
+            }
+
+            double frozen = full * MothballUpkeepFactorDays(lc.DormantTime / 86400d);
+            double frac0 = proj.BP > 0d ? Math.Min(1d, proj.progress / proj.BP) : 1d;
+            double left = proj.GetTimeLeft();
+            double meanFrac;
+            if (double.IsInfinity(left))
+                meanFrac = frac0; // no build rate, so no progress
+            else if (left <= 0d)
+                meanFrac = 1d;
+            else if (deltaTime <= left)
+                meanFrac = frac0 + (1d - frac0) * deltaTime / (2d * left);
+            else
+                meanFrac = (left * (frac0 + (1d - frac0) * 0.5d) + (deltaTime - left)) / deltaTime;
+            return UtilMath.LerpUnclamped(frozen, full, meanFrac);
+        }
+
+        /// <summary>
+        /// LCsCostPerDay corrected so mothballed LCs use their average over the next <paramref name="deltaTime"/> seconds
+        /// instead of today's rate. Use for forward projections.
+        /// </summary>
+        public double LCsCostPerDayProjected(double deltaTime)
+        {
+            double total = LCsCostPerDay;
+            if (deltaTime <= 0d)
+                return total;
+
+            foreach (var ksc in SpaceCenterManagement.Instance.KSCs)
+                foreach (var lc in ksc.LaunchComplexes)
+                    if (lc.IsMothballed)
+                        total += LCUpkeepAverage(lc, deltaTime) - LCUpkeep(lc);
+
+            return total;
+        }
+
         public double LCUpkeep(LaunchComplex lc)
         {
+            if (lc.IsMothballed)
+                return MothballedLCUpkeep(lc);
+
             if (!lc.IsOperational)
             {
                 // find LCConstruction

@@ -391,6 +391,59 @@ namespace RP0
 
             return massFactor * sizeFactor * hrFactor * resFactor;
         }
+
+        // ---- LC mothballing curves (t in days) ------------------------------------------
+
+        /// <summary>Fraction of full upkeep a mothballed LC still pays after t days: exp(-(t/lambda)^k).</summary>
+        public static double MothballUpkeepFactor(double tDays, double lambda, double k)
+        {
+            if (tDays <= 0d)
+                return 1d;
+            return Math.Exp(-Math.Pow(tDays / lambda, k));
+        }
+
+        /// <summary>Degradation D(t) in [0,1]: 1 - exp(-(t/lambda)^k).</summary>
+        public static double MothballDegradation(double tDays, double lambda, double k)
+        {
+            if (tDays <= 0d)
+                return 0d;
+            return 1d - Math.Exp(-Math.Pow(tDays / lambda, k));
+        }
+
+        /// <summary>Decayed pool efficiency. Never below floor; an eff0 already under the floor stays at the floor.</summary>
+        public static double MothballEfficiency(double eff0, double floor, double degradation)
+        {
+            return floor + Math.Max(0d, eff0 - floor) * (1d - degradation);
+        }
+
+        /// <summary>
+        /// Cost to reactivate a mothballed pad LC. padCost/resCost come from LCData.GetCostStats;
+        /// the VAB/dimension cost is never charged. Extra pads are priced like new construction prices them.
+        /// With minFrac in [0,1] this is at most the new-build cost of the same LC and pads.
+        /// </summary>
+        public static double MothballReactivationCost(double padCost, int pads, double additionalPadCostMult, double resCost, double degradation, double minFrac)
+        {
+            double full = padCost * (1d + Math.Max(0, pads - 1) * additionalPadCostMult) + resCost;
+            return full * (minFrac + (1d - minFrac) * degradation);
+        }
+
+        /// <summary>
+        /// Integral of MothballUpkeepFactor over [t0, t1] days, by Simpson's rule (smooth integrand,
+        /// 16-64 steps is far below display precision). Divide by (t1 - t0) for the average factor.
+        /// </summary>
+        public static double MothballUpkeepFactorIntegral(double t0, double t1, double lambda, double k)
+        {
+            if (t1 <= t0)
+                return 0d;
+            int n = (int)Math.Ceiling((t1 - t0) / 10d);
+            n = Math.Min(64, Math.Max(16, n));
+            if ((n & 1) == 1) ++n;
+            double h = (t1 - t0) / n;
+            double sum = MothballUpkeepFactor(t0, lambda, k) + MothballUpkeepFactor(t1, lambda, k);
+            for (int i = 1; i < n; ++i)
+                sum += (i & 1) == 1 ? 4d * MothballUpkeepFactor(t0 + i * h, lambda, k) : 2d * MothballUpkeepFactor(t0 + i * h, lambda, k);
+            return sum * h / 3d;
+        }
     }
 }
 

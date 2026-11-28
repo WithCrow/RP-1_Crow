@@ -42,6 +42,8 @@ namespace RP0
         private EventData<LCConstructionProject, LaunchComplex> onKctLCConstructionCancelEvent;
         private EventData<LCConstructionProject, LaunchComplex> onKctLCConstructionCompleteEvent;
         private EventData<LaunchComplex> onKctLCDismantledEvent;
+        private EventData<LaunchComplex> onKctLCMothballedEvent;
+        private EventData<LaunchComplex> onKctLCRecommissionedEvent;
         private EventData<PadConstructionProject, LCLaunchPad> onKctPadConstructionQueuedEvent;
         private EventData<PadConstructionProject, LCLaunchPad> onKctPadConstructionCancelEvent;
         private EventData<PadConstructionProject, LCLaunchPad> onKctPadConstructionCompletedEvent;
@@ -162,6 +164,18 @@ namespace RP0
                 onKctLCDismantledEvent.Add(OnKctLCDismantled);
             }
 
+            onKctLCMothballedEvent = GameEvents.FindEvent<EventData<LaunchComplex>>("OnKctLCMothballed");
+            if (onKctLCMothballedEvent != null)
+            {
+                onKctLCMothballedEvent.Add(OnKctLCMothballed);
+            }
+
+            onKctLCRecommissionedEvent = GameEvents.FindEvent<EventData<LaunchComplex>>("OnKctLCRecommissioned");
+            if (onKctLCRecommissionedEvent != null)
+            {
+                onKctLCRecommissionedEvent.Add(OnKctLCRecommissioned);
+            }
+
             onKctPadConstructionQueuedEvent = GameEvents.FindEvent<EventData<PadConstructionProject, LCLaunchPad>>("OnKctPadConstructionQueued");
             if (onKctPadConstructionQueuedEvent != null)
             {
@@ -200,6 +214,8 @@ namespace RP0
             if (onKctLCConstructionCancelEvent != null) onKctLCConstructionCancelEvent.Remove(OnKctLCConstructionCancel);
             if (onKctLCConstructionCompleteEvent != null) onKctLCConstructionCompleteEvent.Remove(OnKctLCConstructionComplete);
             if (onKctLCDismantledEvent != null) onKctLCDismantledEvent.Remove(OnKctLCDismantled);
+            if (onKctLCMothballedEvent != null) onKctLCMothballedEvent.Remove(OnKctLCMothballed);
+            if (onKctLCRecommissionedEvent != null) onKctLCRecommissionedEvent.Remove(OnKctLCRecommissioned);
             if (onKctPadConstructionQueuedEvent != null) onKctPadConstructionQueuedEvent.Remove(OnKctPadConstructionQueued);
             if (onKctPadConstructionCancelEvent != null) onKctPadConstructionCancelEvent.Remove(OnKctPadConstructionCancel);
             if (onKctPadConstructionCompletedEvent != null) onKctPadConstructionCompletedEvent.Remove(OnKctPadConstructionComplete);
@@ -908,6 +924,16 @@ namespace RP0
         private void OnKctLCDismantled(LaunchComplex lc)
         {
             AddLCConstructionEvent(null, lc, ConstructionState.Dismantled);
+        }
+
+        private void OnKctLCMothballed(LaunchComplex lc)
+        {
+            AddLCConstructionEvent(null, lc, ConstructionState.Mothballed);
+        }
+
+        private void OnKctLCRecommissioned(LaunchComplex lc)
+        {
+            AddLCConstructionEvent(null, lc, ConstructionState.Recommissioned);
         }
 
         private void OnKctPadConstructionQueued(PadConstructionProject data, LCLaunchPad lp)

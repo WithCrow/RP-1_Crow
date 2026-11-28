@@ -100,7 +100,7 @@ namespace RP0
             {
                 GUILayout.Label("Facilities", HighLogic.Skin.label, GUILayout.Width(160));
                 cost = CurrencyUtils.Funds(TransactionReasonsRP0.StructureRepair, -MaintenanceHandler.Instance.FacilityUpkeepPerDay * PeriodFactor);
-                cost += CurrencyUtils.Funds(TransactionReasonsRP0.StructureRepairLC, -MaintenanceHandler.Instance.LCsCostPerDay * PeriodFactor);
+                cost += CurrencyUtils.Funds(TransactionReasonsRP0.StructureRepairLC, -MaintenanceHandler.Instance.LCsCostPerDayProjected(PeriodFactor * 86400d) * PeriodFactor);
                 totalCost += cost;
                 GUILayout.Label(FormatCost(cost), RightLabel, GUILayout.Width(160));
                 if (GUILayout.Button(_infoBtnContent, InfoButton))
@@ -362,10 +362,10 @@ namespace RP0
                 double siteTotal = 0d;
                 foreach (var lc in ksc.LaunchComplexes)
                 {
-                    if (!lc.IsOperational)
+                    if (!lc.IsOperational && !lc.IsMothballed)
                         continue;
 
-                    double cost = MaintenanceHandler.Instance.LCUpkeep(lc) * PeriodFactor;
+                    double cost = MaintenanceHandler.Instance.LCUpkeepAverage(lc, PeriodFactor * 86400d) * PeriodFactor;
                     cost = CurrencyUtils.Funds(TransactionReasonsRP0.StructureRepairLC, -cost);
                     siteTotal += cost;
                     GUILayout.BeginHorizontal();

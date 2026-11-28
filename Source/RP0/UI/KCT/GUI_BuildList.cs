@@ -775,7 +775,7 @@ namespace RP0
                         GUILayout.Label(RP0DTUtils.GetColonFormattedTimeWithTooltip(t.GetTimeLeft(), "combined" + i), GetLabelRightAlignStyle(), GUILayout.Width(_width1));
                 }
                 else if (t is VesselProject b && !b.LC.IsOperational)
-                    GUILayout.Label("(site reconstructing)", GetLabelRightAlignStyle(), GUILayout.Width(_width1));
+                    GUILayout.Label(b.LC.IsMothballed ? "(decommissioned)" : "(site reconstructing)", GetLabelRightAlignStyle(), GUILayout.Width(_width1));
                 else if (t is Crew.TrainingCourse tc && !tc.HasTemplate)
                     GUILayout.Label("(part not purchased)", GetLabelRightAlignStyle(), GUILayout.Width(_width1));
                 else
@@ -1257,7 +1257,7 @@ namespace RP0
             
             if (!b.LC.IsOperational)
             {
-                GUILayout.Label("(site reconstructing)", GetLabelRightAlignStyle(), GUILayout.ExpandWidth(false));
+                GUILayout.Label(b.LC.IsMothballed ? "(decommissioned)" : "(site reconstructing)", GetLabelRightAlignStyle(), GUILayout.ExpandWidth(false));
                 GUILayout.EndHorizontal();
                 return;
             }
@@ -1621,7 +1621,7 @@ namespace RP0
                 if (canDismantle)
                 {
                     bool canDismantleNow = lc.CanDismantle;
-                    const string dismantleFailTooltip = "Currently in use! No projects can be underway or vessels at pads/airlaunching.";
+                    string dismantleFailTooltip = lc.IsMothballed ? "Decommissioned! Recommission this Launch Complex before dismantling it." : "Currently in use! No projects can be underway or vessels at pads/airlaunching.";
                     if (GUILayout.Button(new GUIContent("Dismantle", canDismantleNow ? "Dismantle this Launch Complex." : dismantleFailTooltip),
                         canDismantleNow ? GUI.skin.button : _redButton, GUILayout.ExpandWidth(false)))
                     {
@@ -1649,7 +1649,61 @@ namespace RP0
                     }
                 }
 
-                if (!isHangar && lc.LCType == LaunchComplexType.Pad && !HighLogic.LoadedSceneIsEditor &&
+                if (!HighLogic.LoadedSceneIsEditor)
+                {
+                    string lcNoun = isHangar ? "Hangar" : "Launch Complex";
+                    if (lc.IsOperational)
+                    {
+                        bool canMothballNow = lc.CanMothball(out string mothballReason);
+                        if (GUILayout.Button(new GUIContent("Decommission", canMothballNow ?
+                            (isHangar ? "Decommission the Hangar to shed its upkeep. Engineers are unassigned. It can be recommissioned later." : "Decommission this Launch Complex to shed its upkeep. Engineers are unassigned and efficiency slowly degrades. It can be recommissioned later.") : mothballReason),
+                            canMothballNow ? GUI.skin.button : _redButton, GUILayout.ExpandWidth(false)))
+                        {
+                            if (canMothballNow)
+                            {
+                                LaunchComplex lcToMothball = lc;
+                                DialogGUIBase[] options = new DialogGUIBase[2];
+                                options[0] = new DialogGUIButton("Yes", () => { lcToMothball.Mothball(); });
+                                options[1] = new DialogGUIButton("No", () => { });
+                                PopupDialog.SpawnPopupDialog(new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                                    new MultiOptionDialog("KCTMothballLC", $"Decommission {lc.Name}?\n\nAll {lc.Engineers:N0} of its engineers will return to the unassigned pool. Upkeep falls off over time, but {(isHangar ? "" : "efficiency degrades and ")}recommissioning costs funds. Vessels in storage cannot be launched or edited until it is recommissioned.",
+                                    $"Decommission {lcNoun}?", null, 300, options), false, HighLogic.UISkin).HideGUIsWhilePopup();
+                            }
+                            else
+                            {
+                                PopupDialog.SpawnPopupDialog(new MultiOptionDialog("KCTCantMothball", mothballReason, "Can't Decommission", null,
+                                    new DialogGUIButton(KSP.Localization.Localizer.GetStringByTag("#autoLOC_190905"), () => { })), false, HighLogic.UISkin).HideGUIsWhilePopup();
+                            }
+                        }
+                    }
+                    else if (lc.IsMothballed)
+                    {
+                        bool canRecomNow = lc.CanRecommission(out string recomReason);
+                        double recomCost = -CurrencyUtils.Funds(TransactionReasonsRP0.StructureConstructionLC, -lc.ReactivationCost);
+                        if (GUILayout.Button(new GUIContent("Recommission", canRecomNow ?
+                            (isHangar ? $"Start a reactivation project. Cost: √{recomCost:N0}" : $"Start a reactivation project for all pads. Cost: √{recomCost:N0}") : recomReason),
+                            canRecomNow ? GUI.skin.button : _redButton, GUILayout.ExpandWidth(false)))
+                        {
+                            if (canRecomNow)
+                            {
+                                LaunchComplex lcToRecom = lc;
+                                DialogGUIBase[] options = new DialogGUIBase[2];
+                                options[0] = new DialogGUIButton("Yes", () => { lcToRecom.StartRecommission(); });
+                                options[1] = new DialogGUIButton("No", () => { });
+                                PopupDialog.SpawnPopupDialog(new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                                    new MultiOptionDialog("KCTRecommissionLC", $"Recommission {lc.Name} for <sprite=\"CurrencySpriteAsset\" name=\"Funds\" tint=1> {recomCost:N0} funds?",
+                                    $"Recommission {lcNoun}?", null, 300, options), false, HighLogic.UISkin).HideGUIsWhilePopup();
+                            }
+                            else
+                            {
+                                PopupDialog.SpawnPopupDialog(new MultiOptionDialog("KCTCantRecommission", recomReason, "Can't Recommission", null,
+                                    new DialogGUIButton(KSP.Localization.Localizer.GetStringByTag("#autoLOC_190905"), () => { })), false, HighLogic.UISkin).HideGUIsWhilePopup();
+                            }
+                        }
+                    }
+                }
+
+                if (!isHangar && lc.LCType == LaunchComplexType.Pad && !HighLogic.LoadedSceneIsEditor && !lc.IsMothballed &&
                     GUILayout.Button(new GUIContent("New Pad", "Build an additional launch pad for this LC"), GUILayout.ExpandWidth(false)))
                 {
                     ksc.SwitchLaunchComplex(i);
@@ -1669,6 +1723,17 @@ namespace RP0
                 }
 
                 GUILayout.EndHorizontal();
+
+                if (lc.IsMothballed)
+                {
+                    double upkeep = -CurrencyUtils.Funds(TransactionReasonsRP0.StructureRepairLC, -lc.CurrentUpkeep);
+                    double recomCostInfo = -CurrencyUtils.Funds(TransactionReasonsRP0.StructureConstructionLC, -lc.ReactivationCost);
+                    GUILayout.BeginHorizontal();
+                    GUILayout.Space(44);
+                    GUILayout.Label(lc.IsReactivating ? "Reactivating" : $"Decommissioned for {RP0DTUtils.PrintDateDelta(lc.DormantTime, includeTime: false)}", GUILayout.ExpandWidth(false));
+                    GUILayout.Label((isHangar ? $"Upkeep: √{upkeep:N0}/day   Reactivation: √{recomCostInfo:N0}" : $"Upkeep: √{upkeep:N0}/day   Efficiency: {lc.Efficiency:P0}   Reactivation: √{recomCostInfo:N0}"), GetLabelRightAlignStyle());
+                    GUILayout.EndHorizontal();
+                }
 
                 if (lc.LCType == LaunchComplexType.Pad)
                 {
@@ -1719,7 +1784,7 @@ namespace RP0
                             }
                         }
 
-                        if (lpCount > 1 && pad.isOperational && GUILayout.Button(new GUIContent("Dismantle", "Permanently dismantle this pad"), GUILayout.ExpandWidth(false)))
+                        if (lpCount > 1 && pad.isOperational && !lc.IsMothballed && GUILayout.Button(new GUIContent("Dismantle", "Permanently dismantle this pad"), GUILayout.ExpandWidth(false)))
                         {
                             ksc.SwitchLaunchComplex(i);
                             lc.SwitchLaunchPad(j);

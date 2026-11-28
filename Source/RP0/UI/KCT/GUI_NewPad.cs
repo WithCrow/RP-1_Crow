@@ -169,6 +169,12 @@ namespace RP0
         }
         private static bool ValidatePadCreationParameters()
         {
+            if (SpaceCenterManagement.Instance.ActiveSC.ActiveLC.IsMothballed)
+            {
+                ScreenMessages.PostScreenMessage("Can't build a pad on a decommissioned Launch Complex");
+                return false;
+            }
+
             if (string.IsNullOrEmpty(_newName))
             {
                 ScreenMessages.PostScreenMessage("Enter a name for the new launchpad");
