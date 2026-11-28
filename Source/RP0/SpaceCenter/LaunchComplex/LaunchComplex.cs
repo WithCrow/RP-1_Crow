@@ -30,6 +30,16 @@ namespace RP0
         [Persistent]
         public int ActiveLaunchPadIndex = 0;
 
+        // Mothballing. A mothballed LC also has IsOperational = false. Saves without these load as not mothballed.
+        [Persistent(name = "mothballed")]
+        public bool IsMothballed = false;
+        [Persistent(name = "dormantAccum")]
+        private double _dormantAccum = 0d; // seconds dormant before the clock's current run
+        [Persistent(name = "dormantSince")]
+        private double _dormantSince = -1d; // UT the dormant clock last started; < 0 while paused (reactivation running)
+        [Persistent(name = "padsAtMothball")]
+        public int PadsAtMothball = 0;
+
         [Persistent(name = "Stats")]
         private LCData _lcData = new LCData();
         public LCData Stats => _lcData;
@@ -53,7 +63,7 @@ namespace RP0
         public double Rate => _rate;
         public double RateHRCapped => _rateHRCapped;
 
-        public override string ToString() => $"{Name} ({(IsOperational ? "Operational" : "Inop")})";
+        public override string ToString() => $"{Name} ({(IsOperational ? "Operational" : IsMothballed ? "Decommissioned" : "Inop")})";
 
         private static double RawMaxEngineers(float massMax, Vector3 sizeMax) =>
             massMax != float.MaxValue ? Math.Pow(massMax, 0.75d) : sizeMax.sqrMagnitude * 0.01d;
@@ -211,15 +221,175 @@ namespace RP0
 
         public bool IsEmpty => LCType == LaunchComplexType.Hangar && BuildList.Count == 0 && Warehouse.Count == 0 && Engineers == 0 && LCData.StartingHangar.Compare(this);
 
-        public bool IsDecommissioned => LCType == LaunchComplexType.Hangar && !IsOperational && !_ksc.LCConstructions.Any(c => c.lcID == ID);
 
         public bool IsActive => BuildList.Count > 0 || GetAllLCOps().Any(op => !op.IsComplete() && op.KeepsLCActive);
         public bool CanDismantle => CanModifyButton;
-        public bool CanModifyButton => BuildList.Count == 0 && Warehouse.Count == 0 &&
+        public bool CanModifyButton => !IsMothballed && BuildList.Count == 0 && Warehouse.Count == 0 &&
                                        !Recon_Rollout.Any(r => r.RRType != ReconRolloutProject.RolloutReconType.Reconditioning) &&
                                        VesselRepairs.Count == 0;
-        public bool CanModifyReal => !Recon_Rollout.Any(r => r.RRType != ReconRolloutProject.RolloutReconType.Reconditioning) &&
+        public bool CanModifyReal => !IsMothballed && !Recon_Rollout.Any(r => r.RRType != ReconRolloutProject.RolloutReconType.Reconditioning) &&
                                      VesselRepairs.Count == 0;
+
+        #region Mothballing
+
+        /// <summary>The running reactivation project, or null.</summary>
+        public LCConstructionProject ReactivationProject =>
+            _ksc?.LCConstructions.Find(c => c.isReactivation && c.lcID == ID);
+
+        public bool IsReactivating => IsMothballed && ReactivationProject != null;
+
+        /// <summary>Seconds of accumulated dormant time (paused while a reactivation runs).</summary>
+        public double DormantTime => GetDormantTime(0d);
+
+        /// <summary>Dormant seconds <paramref name="deltaSeconds"/> from now, assuming the clock keeps its current running state.</summary>
+        public double GetDormantTime(double deltaSeconds)
+        {
+            if (!IsMothballed)
+                return 0d;
+            double t = _dormantAccum;
+            if (_dormantSince >= 0d)
+                t += Math.Max(0d, Planetarium.GetUniversalTime() + deltaSeconds - _dormantSince);
+            return t;
+        }
+
+        /// <summary>Degradation D in [0,1] after the given dormant seconds.</summary>
+        public static double MothballDegradation(double dormantSeconds) =>
+            Formula.MothballDegradation(dormantSeconds / 86400d, Database.SettingsSC.MothballDegradeLambda, Database.SettingsSC.MothballDegradeK);
+
+        /// <summary>Current reactivation cost (raw funds, as ConstructionProject.cost). Valid for a mothballed LC.</summary>
+        public double ReactivationCost => GetReactivationCost(0d);
+
+        /// <summary>Reactivation cost if started <paramref name="deltaSeconds"/> from now (for projections).</summary>
+        public double GetReactivationCost(double deltaSeconds)
+        {
+            _lcData.GetCostStats(out double padCost, out _, out double resCost);
+            var s = Database.SettingsSC;
+            // Cost mirrors the upkeep curve (rises as upkeep falls) so players can read one from the other.
+            double upkeepFactor = Formula.MothballUpkeepFactor(GetDormantTime(deltaSeconds) / 86400d, s.MothballUpkeepLambda, s.MothballUpkeepK);
+            return Formula.MothballReactivationCost(padCost, Math.Max(1, PadsAtMothball), s.AdditionalPadCostMult, resCost,
+                1d - upkeepFactor, s.MothballMinCostFrac);
+        }
+
+        /// <summary>Daily upkeep right now (raw, before CurrencyUtils modifiers). Curved while mothballed.</summary>
+        public double CurrentUpkeep => MaintenanceHandler.Instance != null ? MaintenanceHandler.Instance.LCUpkeep(this) : 0d;
+
+        public bool CanMothball(out string reason)
+        {
+            reason = null;
+            if (IsMothballed) { reason = "Already decommissioned"; return false; }
+            if (!IsOperational) { reason = "Launch complex is not operational"; return false; }
+            if (BuildList.Count > 0) { reason = "Vessels are in the integration queue"; return false; }
+            foreach (var lp in LaunchPads)
+            {
+                if (lp.HasVesselWaitingToBeLaunched(out _)) { reason = "A vessel is on a launch pad"; return false; }
+            }
+            if (Recon_Rollout.Count > 0) { reason = "Rollout, rollback, reconditioning, airlaunch prep or recovery is in progress"; return false; }
+            if (VesselRepairs.Count > 0) { reason = "Vessel repairs are in progress"; return false; }
+            if (PadConstructions.Count > 0) { reason = "A pad is under construction"; return false; }
+            if (_ksc != null && _ksc.LCConstructions.Any(c => c.lcID == ID)) { reason = "Launch complex construction is in progress"; return false; }
+            return true;
+        }
+
+        public bool CanRecommission(out string reason)
+        {
+            reason = null;
+            if (!IsMothballed) { reason = "Launch complex is not decommissioned"; return false; }
+            if (IsReactivating) { reason = "Reactivation is already in progress"; return false; }
+            return true;
+        }
+
+        /// <summary>Instant and free. Engineers return to the unassigned pool. Vessels in the warehouse stay.</summary>
+        public void Mothball()
+        {
+            if (!CanMothball(out _))
+                return;
+
+            var scm = SpaceCenterManagement.Instance;
+            if (scm.staffTarget.LCID == ID)
+                scm.staffTarget.Clear();
+            KCTUtilities.ChangeEngineers(this, -Engineers);
+
+            if (KSC.ActiveLC == this)
+                KSC.SwitchToPrevLaunchComplex();
+
+            PadsAtMothball = LaunchPadCount;
+            _dormantAccum = 0d;
+            _dormantSince = Planetarium.GetUniversalTime();
+            IsMothballed = true;
+            IsOperational = false;
+
+            EfficiencySource?.UpdateDecayState(); // null for the hangar, which has no efficiency pool
+            RecalculateBuildRates();
+            MaintenanceHandler.Instance?.ScheduleMaintenanceUpdate();
+
+            try { SCMEvents.OnLCMothballed?.Fire(this); }
+            catch (Exception ex) { Debug.LogException(ex); }
+        }
+
+        /// <summary>Queues the reactivation project at the current cost and pauses the dormant clocks.</summary>
+        public void StartRecommission()
+        {
+            if (!CanRecommission(out _))
+                return;
+
+            double cost = ReactivationCost;
+            var modData = new LCData();
+            modData.SetFrom(_lcData);
+            var proj = new LCConstructionProject
+            {
+                lcID = ID,
+                cost = cost,
+                name = $"{Name} Reactivation",
+                isReactivation = true,
+                modId = ModID,
+                lcData = modData
+            };
+            if (cost <= 0d)
+            {
+                // A hangar handling no rocket propellant has nothing to rebuild: recommission at once.
+                CompleteReactivation();
+                try { SCMEvents.OnLCRecommissioned?.Fire(this); }
+                catch (Exception ex) { Debug.LogException(ex); }
+                return;
+            }
+            proj.SetBP(cost, 0d);
+
+            if (_dormantSince >= 0d)
+            {
+                _dormantAccum += Math.Max(0d, Planetarium.GetUniversalTime() - _dormantSince);
+                _dormantSince = -1d;
+            }
+
+            KSC.LCConstructions.Add(proj); // observer registers it with KSC.Constructions
+            EfficiencySource?.UpdateDecayState(); // null for the hangar, which has no efficiency pool
+            MaintenanceHandler.Instance?.ScheduleMaintenanceUpdate();
+        }
+
+        /// <summary>Called by the reactivation project when cancelled, after it left the construction list: resumes the clocks.</summary>
+        internal void ResumeAfterReactivationCancel()
+        {
+            if (!IsMothballed)
+                return;
+            if (_dormantSince < 0d)
+                _dormantSince = Planetarium.GetUniversalTime();
+            if (_efficiencySource != null || SpaceCenterManagement.Instance.LCToEfficiency.TryGetValue(this, out _efficiencySource))
+                _efficiencySource.UpdateDecayState();
+            MaintenanceHandler.Instance?.ScheduleMaintenanceUpdate();
+        }
+
+        /// <summary>Called by the reactivation project on completion. Efficiency keeps its decayed value.</summary>
+        internal void CompleteReactivation()
+        {
+            IsMothballed = false; // before the pool update, so the pool sees an active member and stops decaying
+            IsOperational = true;
+            _dormantAccum = 0d;
+            _dormantSince = -1d;
+            EfficiencySource?.UpdateDecayState(); // null for the hangar, which has no efficiency pool
+            RecalculateBuildRates();
+            MaintenanceHandler.Instance?.ScheduleMaintenanceUpdate();
+        }
+
+        #endregion
         public bool CanIntegrate => ProjectBPTotal == 0d;
 
         private double _projectBPTotal = -1d;
@@ -369,20 +539,18 @@ namespace RP0
             return null;
         }
 
-        public void Decommission()
+        /// <summary>
+        /// Saves from the older hangar-only decommission left the Hangar non-operational with no construction.
+        /// Convert that state to the current decommission mechanic so it can be recommissioned.
+        /// </summary>
+        internal void MigrateLegacyDecommission()
         {
-            if (SpaceCenterManagement.Instance.staffTarget.LCID == ID)
-                SpaceCenterManagement.Instance.staffTarget.Clear();
-            KCTUtilities.ChangeEngineers(this, -Engineers);
-
-            if (_efficiencySource == null)
-                SpaceCenterManagement.Instance.LCToEfficiency.TryGetValue(this, out _efficiencySource);
-            _efficiencySource?.RemoveLC(this);
-            _efficiencySource = null;
-
-            IsOperational = false;
-            RecalculateBuildRates();
-            MaintenanceHandler.Instance?.ScheduleMaintenanceUpdate();
+            if (LCType != LaunchComplexType.Hangar || IsOperational || IsMothballed || _ksc.LCConstructions.Any(c => c.lcID == ID))
+                return;
+            IsMothballed = true;
+            PadsAtMothball = 0;
+            _dormantAccum = 0d;
+            _dormantSince = Planetarium.GetUniversalTime();
         }
 
         public void Delete()

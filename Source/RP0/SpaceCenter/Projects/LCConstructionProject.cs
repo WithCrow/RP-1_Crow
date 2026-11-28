@@ -8,6 +8,10 @@ namespace RP0
         [Persistent]
         public bool isModify = false;
 
+        /// <summary>Reactivating a mothballed LC.</summary>
+        [Persistent]
+        public bool isReactivation = false;
+
         [Persistent]
         public bool isRecommission = false;
 
@@ -50,6 +54,22 @@ namespace RP0
             if (!SpaceCenterManagement.Instance.ErroredDuringOnLoad)
             {
                 LaunchComplex lc = KSC.LaunchComplexes.Find(l => l.ID == lcID);
+                if (isReactivation)
+                {
+                    // Pads were never made non-operational, so they come back with the LC. Engineers are not reassigned.
+                    upgradeProcessed = true;
+                    lc.CompleteReactivation();
+                    try
+                    {
+                        SCMEvents.OnLCRecommissioned?.Fire(lc);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogException(ex);
+                    }
+                    return;
+                }
+
                 lc.IsOperational = true;
                 upgradeProcessed = true;
                 if (isModify || isRecommission)
@@ -89,6 +109,14 @@ namespace RP0
 
             // Must be removed before LC.Delete() runs, since Delete() cancels all of the LC's constructions
             KSC.LCConstructions.Remove(this);
+
+            if (isReactivation)
+            {
+                // Back to mothballed with the dormant clocks resumed. Progress/funds spent are not refunded (as other LC projects).
+                lc.ResumeAfterReactivationCancel();
+                KSC.RecalculateBuildRates(false);
+                return;
+            }
 
             if (isModify)
             {

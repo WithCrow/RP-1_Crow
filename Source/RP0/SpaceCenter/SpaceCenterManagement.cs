@@ -595,6 +595,9 @@ namespace RP0
 
                 LCEfficiency.RelinkAll();
 
+                foreach (var ksc in KSCs)
+                    ksc.Hangar?.MigrateLegacyDecommission();
+
                 if (LoadedSaveVersion < VERSION)
                 {
                     if (LoadedSaveVersion < 9)
@@ -1030,7 +1033,10 @@ namespace RP0
             if (MaintenanceHandler.Instance == null) return 0;
 
             double averageSubsidyPerDay = CurrencyUtils.Funds(TransactionReasonsRP0.Subsidy, MaintenanceHandler.GetAverageSubsidyForPeriod(deltaTime)) * (1d / 365.25d);
-            double fundDelta = Math.Min(0d, MaintenanceHandler.Instance.UpkeepPerDayForDisplay + averageSubsidyPerDay) * deltaTime * (1d / 86400d)
+            // Mothballed LCs' upkeep decays over the period, so swap today's LC rate for the period average.
+            double lcDelta = MaintenanceHandler.Instance.LCsCostPerDayProjected(deltaTime) - MaintenanceHandler.Instance.LCsCostPerDay;
+            double upkeepPerDay = MaintenanceHandler.Instance.UpkeepPerDayForDisplay + CurrencyUtils.Funds(TransactionReasonsRP0.StructureRepairLC, -lcDelta);
+            double fundDelta = Math.Min(0d, upkeepPerDay + averageSubsidyPerDay) * deltaTime * (1d / 86400d)
                 + GetConstructionCostOverTime(deltaTime) + GetReconRolloutCostOverTime(deltaTime)
                 + Programs.ProgramHandler.Instance.GetDisplayProgramFunding(deltaTime);
 

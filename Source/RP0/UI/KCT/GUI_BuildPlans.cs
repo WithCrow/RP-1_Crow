@@ -193,8 +193,8 @@ namespace RP0
 
                 PopupDialog.SpawnPopupDialog(new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), "buildPlansNoLCPopup",
                     "No Suitable Launch Complex!",
-                    sc.Hangar.IsDecommissioned
-                        ? "The Hangar is decommissioned. Recommission it from the SPH or the Launch Complexes window before integrating this vessel."
+                    sc.Hangar.IsMothballed
+                        ? "The Hangar is decommissioned. Recommission it from the Launch Complexes window before integrating this vessel."
                         : "The Hangar is not operational. Wait for it to finish renovating before integrating this vessel.",
                     "Acknowledged", false, HighLogic.UISkin).HideGUIsWhilePopup();
                 return null;

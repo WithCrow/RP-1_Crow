@@ -9,7 +9,87 @@ namespace RP0
     {
         [Persistent]
         protected double _efficiency = 0.5d;
-        public double Efficiency => _efficiency;
+        public double Efficiency
+        {
+            get
+            {
+                if (_decayActive)
+                    SyncDecay();
+                return _efficiency;
+            }
+        }
+
+        // Mothball decay state. Evaluated lazily from UT so it is identical across save/load and timewarp.
+        // While decaying, _efficiency = floor + (_eff0 - floor) * (1 - D(tp)), tp = _tpAccum + (UT - _tpSince) if running.
+        [Persistent]
+        protected bool _decayActive = false;
+        [Persistent]
+        protected double _eff0 = 0d;
+        [Persistent]
+        protected double _tpAccum = 0d; // seconds
+        [Persistent]
+        protected double _tpSince = -1d; // UT the decay clock last started; < 0 while paused (reactivation running)
+
+        public bool IsDecaying => _decayActive;
+
+        private void SyncDecay()
+        {
+            double ut = Planetarium.GetUniversalTime();
+            double tp = _tpAccum + (_tpSince >= 0d ? Math.Max(0d, ut - _tpSince) : 0d);
+            var s = Database.SettingsSC;
+            double d = Formula.MothballDegradation(tp / 86400d, s.MothballDegradeLambda, s.MothballDegradeK);
+            _efficiency = Formula.MothballEfficiency(_eff0, _MinEfficiency, d);
+        }
+
+        /// <summary>
+        /// Call whenever a member's mothball/reactivation state changes or a member joins.
+        /// Decays only while every member is mothballed with no reactivation running (paused while one runs).
+        /// </summary>
+        public void UpdateDecayState()
+        {
+            if (_lcs.Count == 0)
+                return;
+
+            bool anyActive = false, anyReactivating = false;
+            for (int i = _lcs.Count; i-- > 0;)
+            {
+                if (!_lcs[i].IsMothballed)
+                    anyActive = true;
+                else if (_lcs[i].IsReactivating)
+                    anyReactivating = true;
+            }
+
+            double ut = Planetarium.GetUniversalTime();
+            if (_decayActive)
+                SyncDecay(); // bring _efficiency up to now before changing the clock
+
+            if (anyActive)
+            {
+                // keeps the decayed value, drops the snapshot
+                _decayActive = false;
+                _tpSince = -1d;
+                return;
+            }
+
+            if (!_decayActive)
+            {
+                _eff0 = _efficiency;
+                _tpAccum = 0d;
+                _tpSince = anyReactivating ? -1d : ut;
+                _decayActive = true;
+                return;
+            }
+
+            if (anyReactivating && _tpSince >= 0d)
+            {
+                _tpAccum += Math.Max(0d, ut - _tpSince);
+                _tpSince = -1d;
+            }
+            else if (!anyReactivating && _tpSince < 0d)
+            {
+                _tpSince = ut;
+            }
+        }
 
         [Persistent]
         protected LCData _lcStats = new LCData();
@@ -124,6 +204,10 @@ namespace RP0
 
         private void ReceiveDistributedEfficiency(LCEfficiency e, double increase)
         {
+            // all-mothballed pools must not gain, or the decay snapshot (eff0) would no longer apply
+            if (_decayActive)
+                return;
+
             _closenessCache.TryGetValue(e, out double closeness);
             if (closeness == 0d)
                 return;
@@ -183,7 +267,7 @@ namespace RP0
         public double PredictWeightedEfficiency(bool isRushing, double tdelta, double portionEngineers, out double newEff, double startingEfficiency = -1d)
         {
             if (startingEfficiency < 0d)
-                startingEfficiency = _efficiency;
+                startingEfficiency = Efficiency;
 
             newEff = startingEfficiency;
 
@@ -228,7 +312,7 @@ namespace RP0
         public double PredictEfficiency(double tdelta, double portionEngineers, double startingEfficiency = -1d)
         {
             if (startingEfficiency < 0d)
-                startingEfficiency = _efficiency;
+                startingEfficiency = Efficiency;
 
             if (tdelta < 86400d || startingEfficiency >= _MaxEfficiency)
                 return startingEfficiency;
@@ -384,7 +468,7 @@ namespace RP0
 
         public double PostClosenessStartingEfficiency(double closeness)
         {
-            return _MinEfficiency + (_efficiency - _MinEfficiency) * closeness;
+            return _MinEfficiency + (Efficiency - _MinEfficiency) * closeness;
         }
 
         // List operations ---------------------------------------------------
@@ -408,6 +492,7 @@ namespace RP0
                 return;
 
             _lcIDs.Insert(idx, lc.ID);
+            UpdateDecayState(); // a non-mothballed LC joining ends decay; loading restores persisted state instead
         }
 
         private void removed(int idx, LaunchComplex lc)

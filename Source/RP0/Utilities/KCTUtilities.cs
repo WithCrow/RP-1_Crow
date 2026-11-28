@@ -376,8 +376,8 @@ namespace RP0
                 {
                     if (SpaceCenterManagement.Instance.ActiveSC.Hangar.IsOperational)
                         dialogStr = $"the Hangar. Please switch to the Hangar as active launch complex and try again.";
-                    else if (SpaceCenterManagement.Instance.ActiveSC.Hangar.IsDecommissioned)
-                        dialogStr = $"the Hangar. You first need to recommission the Hangar before you can integrate this vessel.";
+                    else if (SpaceCenterManagement.Instance.ActiveSC.Hangar.IsMothballed)
+                        dialogStr = $"the Hangar. The Hangar is decommissioned; recommission it before you can integrate this vessel.";
                     else
                         dialogStr = $"the Hangar. You must wait for the Hangar to finish renovating before you can integrate this vessel.";
                 }

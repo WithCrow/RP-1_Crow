@@ -82,6 +82,10 @@ namespace RP0
         public double ResearcherIdleSalaryMult = 0.5;
         [Persistent]
         public double AdditionalPadCostMult = 0.5d, RushRateMult = 1.5d, RushSalaryMult = 2d, EngineerIdleSalaryMult = 0.25, PartAdditionTimePenalty = 1d, EffectiveCostPerLiterPerResourceMult = 0.1d;
+        // LC mothballing, all in days. Upkeep factor = exp(-(t/UpkeepLambda)^UpkeepK); degradation D = 1-exp(-(t/DegradeLambda)^DegradeK).
+        // Reactivation cost is scaled by lerp(MothballMinCostFrac, 1, 1 - upkeep factor); efficiency decays with D.
+        [Persistent]
+        public double MothballUpkeepLambda = 90d, MothballUpkeepK = 1.5d, MothballDegradeLambda = 1826d, MothballDegradeK = 2d, MothballMinCostFrac = 0.1d;
         [Persistent]
         public HermiteCurve EngineerSkillupRate = new HermiteCurve();
         [Persistent]
