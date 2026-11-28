@@ -19,7 +19,7 @@ namespace RP0
         private static readonly GUIContent _gcNoLCAvailable = new GUIContent("No LC Available", "Build a new one.");
         private static readonly GUIContent _gcNoLCAvailableSomeConstructing = new GUIContent("No LC Available Now", "There is no operational launch complex. Build a new one or wait for an existing one to finish construction.");
         private static readonly GUIContent _gcNewLC = new GUIContent("New LC", "Build a new launch complex to support this vessel, with a margin of 10% to vessel mass and size upgrades.");
-        private static readonly GUIContent _gcNoHangar = new GUIContent("Hangar Unavailable", "The Hangar is currently being modified.");
+        private static readonly GUIContent _gcNoHangar = new GUIContent("Hangar Unavailable", "The Hangar is currently being modified or is decommissioned.");
         private static readonly GUIContent _gcSwitchToHangar = new GUIContent("Switch to Hangar", "A Launch Complex is currently selected; this will switch to the Hangar, needed for planes.");
         private static readonly GUIContent _gcNonmatchingParts = new GUIContent("Toggle Non-Matching Part Highlights", "Red is differing cost. Yellow is differing mass. Blue is differing resources. Purple is no matching part name.");
         private static List<string> vesselFailedChecks = new List<string>();

@@ -43,6 +43,8 @@ namespace RP0
         public static EventData<LCConstructionProject, LaunchComplex> OnLCConstructionCancel;
         public static EventData<LCConstructionProject, LaunchComplex> OnLCConstructionComplete;
         public static EventData<LaunchComplex> OnLCDismantled;
+        public static EventData<LaunchComplex> OnLCMothballed;
+        public static EventData<LaunchComplex> OnLCRecommissioned;
         public static EventVoid OnPersonnelChange;
         public static EventVoid OnRecalculateBuildRates;
 
@@ -124,6 +126,8 @@ namespace RP0
             OnLCConstructionCancel = new EventData<LCConstructionProject, LaunchComplex>("OnKctLCConstructionCancel");
             OnLCConstructionComplete = new EventData<LCConstructionProject, LaunchComplex>("OnKctLCConstructionComplete");
             OnLCDismantled = new EventData<LaunchComplex>("OnKctLCDismantled");
+            OnLCMothballed = new EventData<LaunchComplex>("OnKctLCMothballed");
+            OnLCRecommissioned = new EventData<LaunchComplex>("OnKctLCRecommissioned");
             OnPersonnelChange = new EventVoid("OnKctPesonnelChange");
             OnRecalculateBuildRates = new EventVoid("OnKctRecalculateBuildRates");
 
