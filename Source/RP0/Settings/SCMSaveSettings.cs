@@ -38,9 +38,9 @@ namespace RP0
                 ConfigNode.LoadObjectFromConfig(settings, legacy ?? root);
                 RP0Debug.Log("Loaded SCM save settings.");
             }
-            else if (HighLogic.CurrentGame?.Mode == Game.Modes.SANDBOX)
+            else if (HighLogic.CurrentGame?.Mode == Game.Modes.SANDBOX || HighLogic.CurrentGame?.Mode == Game.Modes.SCIENCE_SANDBOX)
             {
-                // Start sandbox saves with SCM disabled
+                // Start sandbox and science saves with SCM disabled
                 settings.Enabled = false;
             }
 
